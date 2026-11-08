@@ -9,8 +9,8 @@ All forks were made from Herdr **0.1.13**. An exact copy of each source file at 
 | Fork | Herdr source | What the fork changes |
 | --- | --- | --- |
 | `layouts/better-main.json` | `layouts/main.json` | Flat look: no borders, gaps or rounded pane frames. Uses the `my-*` and `better-*` mods. Sets `"terminal_menu": "my-menu"`. |
-| `mods/my-tabs/` | `mods/tabs/` | Flat text tabs underlined in the accent color, and side panel toggles. Right-clicking a tab opens `my-menu` with `frame: "none"` (`main.js:84`). |
-| `mods/my-files/` | `mods/files/` | Material file icons. |
+| `mods/my-tabs/` | `mods/tabs/` | Flat text tabs underlined in the accent color, and side panel toggles. Right-clicking a tab opens `my-menu` with `frame: "none"` (`main.js:84`). Markdown icon and file name for `md-viewer` tabs. |
+| `mods/my-files/` | `mods/files/` | Material file icons. Markdown files open in an `md-viewer` tab. |
 | `mods/my-palette/` | `frame/palette/` | Command palette. Square corners, no Herdr frame, opens as a centered dialog (`mod.json`). "Go to space or tab…" opens `my-picker`. |
 | `mods/my-picker/` | `mods/picker/` | "Go to…" picker. Square corners, no Herdr frame, opens as a centered dialog. No title row; the search row has a bottom border. |
 | `mods/my-menu/` | `mods/menu/` | Right-click menu. Square corners, no Herdr frame (`mod.json` `overlay.frame`), 1px border. Long labels wrap instead of being cut: rows use `min_h(31)` instead of `h(31)`, and the shortcut is `flex_none`. |

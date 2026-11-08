@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
-import { fileKind, ICONS } from "../file-kind.js";
+import { fileKind, isMarkdown, ICONS } from "../file-kind.js";
 
 test("folders, special names and extensions get their Material icon", () => {
   assert.equal(fileKind("misc", true), "folder");
@@ -22,4 +22,14 @@ test("folders, special names and extensions get their Material icon", () => {
 test("every icon fileKind can return ships in icons/material/", () => {
   const shipped = new Set(readdirSync(new URL("../icons/material", import.meta.url)));
   for (const name of ICONS) assert.ok(shipped.has(`${name}.svg`), name);
+});
+
+test("isMarkdown matches md, markdown and mdx case-insensitively", () => {
+  assert.equal(isMarkdown("a.md"), true);
+  assert.equal(isMarkdown("README.MD"), true);
+  assert.equal(isMarkdown("doc.markdown"), true);
+  assert.equal(isMarkdown("page.mdx"), true);
+  assert.equal(isMarkdown("notes.md.bak"), false);
+  assert.equal(isMarkdown("md"), false);
+  assert.equal(isMarkdown("main.js"), false);
 });

@@ -2,6 +2,8 @@ import { View, div, svg, image } from "gpui-kit";
 import { h_flex } from "gpui-base";
 import { spaces, panes, run, openOverlay, theme, window, shared, layout, settings, nextCommand } from "herdr";
 
+const MARKDOWN_ICON = "mods/my-files/icons/material/markdown.svg";
+
 function find(node, id) {
   if (node?.id === id) return node;
   for (const child of node?.children ?? []) {
@@ -71,6 +73,9 @@ export default class Tabs extends View {
       const program = panes().find(p => p.tab === c.id && p.program?.agent)?.program ?? panes().find(p => p.tab === c.id)?.program;
       const name = /^tb\d+$/.test(c.name) ? program?.name ?? "Terminal" : c.name;
       const label = c.zoomed ? `${name} Z` : name;
+      const viewer = panes().some(p => p.tab === c.id && p.mod === "md-viewer");
+      const icon = viewer ? image(MARKDOWN_ICON).size(14)
+        : program?.icon && !program.tint ? image(program.icon).size(14) : svg(program?.icon ?? "mods/workspace-chrome/terminal.svg").size(14).text_color(t.muted);
       return h_flex().id(`tab-${c.id}`).h_full().px(10).gap(6).items_center().flex_none()
         .border_b(2).border_color(c.active ? t.accent : t.chrome)
         .text_color(c.active ? t.foreground : t.muted)
@@ -82,7 +87,8 @@ export default class Tabs extends View {
           else run("tab.select", { id: c.id });
         })
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "my-menu", kind: "popup", frame: "none", width: 280, props: { tab: "tab", target: { id: c.id, space: space.id } } }); })
-        .child(program?.icon && !program.tint ? image(program.icon).size(14) : svg(program?.icon ?? "mods/workspace-chrome/terminal.svg").size(14).text_color(t.muted))
+        .child(icon)
+        .when(viewer, el => el.child(div().max_w(200).truncate().child(name)))
         .when(c.status === "working", el => el.child(svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(t.working).spin(900)))
         .when(c.status === "blocked" || c.status === "done", el => el.child(div().size(6).bg(t[c.status])))
         .when(c.active, el => el.child(div().id(`close-${c.id}`).text_color(t.dim).on_mouse_down("left", stop).on_click((_e, cx) => { cx.stop_propagation(); run("tab.close", { id: c.id }); }).child(svg("mods/pane/close.svg").size(12))));

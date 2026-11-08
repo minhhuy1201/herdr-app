@@ -53,3 +53,7 @@ export const ICONS = [
     ...Object.values(FOLDERS), ...Object.values(NAMES), ...Object.values(EXTENSIONS),
   ]),
 ].flatMap((n) => (n.startsWith("folder") ? [n, `${n}-open`] : [n]));
+
+export function isMarkdown(name) {
+  return /\.(md|markdown|mdx)$/.test(name.trim().toLowerCase());
+}
