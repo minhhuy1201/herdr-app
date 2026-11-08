@@ -27,3 +27,15 @@ _Avoid_: diff modal, diff popup, diff tab
 **Side-by-side diff**:
 A file's change drawn as two columns: before on the left, after on the right.
 _Avoid_: split view, two-pane diff
+
+**Markdown viewer**:
+A read-only tab that shows one markdown file from the Files panel. It never changes the file.
+_Avoid_: markdown editor, preview pane, doc tab
+
+**Preview mode**:
+The Markdown viewer showing the file as formatted text: headings, lists, tables and coloured code blocks.
+_Avoid_: rendered view, reader mode
+
+**Source mode**:
+The Markdown viewer showing the file's raw text with line numbers and markdown syntax colours.
+_Avoid_: raw view, code view, edit mode
