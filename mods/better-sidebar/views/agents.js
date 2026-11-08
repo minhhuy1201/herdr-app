@@ -300,7 +300,7 @@ export class Agents {
     const on = k.address === shown;
     return h_flex()
       .id(`sub-${k.address}`)
-      .pl(39)
+      .pl(15)
       .pr(8)
       .h(26)
       .flex_none()
