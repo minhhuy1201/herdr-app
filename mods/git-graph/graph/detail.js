@@ -56,7 +56,7 @@ export const ITEM = { commit: 28, line: 18, pad: 12, meta: 22, hash: 28, state: 
 
 // Width in character cells: wide (CJK, fullwidth, emoji) characters take two.
 const WIDE = /[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe6f\uff00-\uff60\uffe0-\uffe6]|[\ud800-\udbff][\udc00-\udfff]/g;
-export const cells = (line) => line.length + (line.match(WIDE)?.length ?? 0);
+export const cells = (line) => [...line].length + (line.match(WIDE)?.length ?? 0);
 
 // How many lines one paragraph takes at `width` cells, wrapped at spaces; a word longer
 // than the line breaks inside it.

@@ -62,6 +62,8 @@ export function parseDiff(text) {
     return { type: "empty", status };
   }
   if (body.some((line) => /^[-+]Subproject commit /.test(line))) return { type: "mode", note: "Submodule change", status };
+  // A type change to or from a binary file has one text section and one binary one.
+  if (parts.some((part) => !part.body.length && BINARY.test(part.header.join("\n")))) return { type: "binary", status };
   const truncated = body.length > MAX_LINES;
   let oldLine = 0;
   let newLine = 0;

@@ -37,3 +37,12 @@ test("an untracked file is always A, a plain edit M", () => {
   assert.equal(statusOf(parseDiff(diff("@@ -1 +1 @@", "-a", "+b"))), "M");
   assert.equal(statusOf({ type: "loading" }), "M");
 });
+
+test("a type change with a binary side shows as a binary type change", () => {
+  const r = parseDiff(diff(
+    ...header("deleted file mode 120000", "index 1234567..0000000", "--- a/f", "+++ /dev/null"), "@@ -1 +0,0 @@", "-target",
+    ...header("new file mode 100644", "index 0000000..1234567"), "Binary files /dev/null and b/f differ",
+  ));
+  assert.equal(r.type, "binary");
+  assert.equal(statusOf(r), "T");
+});

@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildGraph } from "../graph/model.js";
-import { parseCommitFiles, flatten, wrappedLines, ITEM } from "../graph/detail.js";
+import { parseCommitFiles, flatten, wrappedLines, cells, ITEM } from "../graph/detail.js";
 import { READ_ONLY, readCommitDetail } from "../graph/reads.js";
 
 const c = (hash, ...parents) => ({ hash, parents, author: "a", time: 0, subject: hash, refs: "" });
@@ -93,4 +93,8 @@ test("joinPages drops a commit that appears in both pages", () => {
   const row = (h) => ({ commit: { hash: h } });
   const joined = joinPages({ rows: [row("a"), row("b")], laneCount: 1 }, { rows: [row("b"), row("c")], laneCount: 2, state: null, done: true });
   assert.deepEqual(joined.rows.map((r) => r.commit.hash), ["a", "b", "c"]);
+});
+
+test("an emoji counts as two cells, not three", () => {
+  assert.equal(cells("a😀"), 3);
 });
