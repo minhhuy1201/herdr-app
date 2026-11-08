@@ -8,7 +8,7 @@ Spec: [docs/specs/git-graph.md](../../specs/git-graph.md). Read `~/.config/herdr
 
 **Model:** sonnet - clones a mod, edits the layout and changes the enabled-panels logic
 
-**Status:** todo
+**Status:** implemented, commit pending
 
 - [ ] Make the clone with `herdr-app do mod.clone '{"name":"tabs","as":"my-tabs"}'`. Never edit `mods/tabs` itself, because Herdr restores it on start. In `layouts/better-main.json`, point the block that shows `tabs` at `my-tabs`, keeping its size and `window_drag`. Add `mods/my-tabs/` to the allowlist in `.gitignore` if it is missing.
 - [ ] The panel buttons are 26px squares with only an icon and `.tooltip(label)` ("Files", "Changes", "Git Graph"), plus an `accessibility_label`. The active panel's button keeps the `selected` background. A click toggles the panel exactly as before, through `layout.select` on `panel-body` and `layout.show` / `layout.hide` on `panel`.

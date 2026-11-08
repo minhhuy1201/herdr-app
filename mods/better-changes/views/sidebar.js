@@ -95,6 +95,7 @@ export const sidebarMethods = {
           .child(
             HeaderTab({
               id: "tab-changes",
+              icon: "git-compare",
               label: "Changes",
               count: this.total || null,
               active: this.tab === "changes",
@@ -104,6 +105,7 @@ export const sidebarMethods = {
           .child(
             HeaderTab({
               id: "tab-commit",
+              icon: "commit",
               label: "Commits",
               count: unpushed,
               active: this.tab === "commit",

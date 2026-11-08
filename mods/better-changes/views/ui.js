@@ -107,7 +107,8 @@ function Badge(text) {
 }
 
 // A panel title that doubles as a tab, the same pill as Herdr's tab bar.
-export function HeaderTab({ id, label, count, active, onClick }) {
+// Icon-only: the label is the tooltip and the accessible name.
+export function HeaderTab({ id, icon, label, count, active, onClick }) {
   const t = theme();
   return h_flex()
     .id(id)
@@ -126,8 +127,10 @@ export function HeaderTab({ id, label, count, active, onClick }) {
     .hover((s) => s.bg(t.hover))
     .role("tab")
     .aria_selected(Boolean(active))
+    .accessibility_label(label)
+    .tooltip(label)
     .on_click((_e, cx) => onClick(cx))
-    .child(label)
+    .child(Icon(icon, 14))
     .when(count !== undefined && count !== null, (el) => el.child(Badge(count)));
 }
 
