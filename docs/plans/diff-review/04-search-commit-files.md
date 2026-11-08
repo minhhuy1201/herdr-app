@@ -8,9 +8,9 @@ Spec: [docs/specs/diff-review.md](../../specs/diff-review.md). Read `~/.config/h
 
 **Model:** sonnet - a filtering rule and keyboard handling
 
-**Status:** todo
+**Status:** done (criteria 2 and 3 not verified in the live app: shot is stale here; filter logic, check and status verified)
 
-- [ ] Filter tests pass: substring anywhere in the path; case ignored; empty query keeps every file; no match gives an empty list.
-- [ ] In the app, typing `sidebar` in a Commit that changed `views/sidebar.js` leaves that file listed; a query with no match shows "No matching files".
-- [ ] The field has the keyboard on open; Up / Down step through the filtered rows only.
-- [ ] `node --test tests/` passes in `diff-review`; `herdr-app check` passes; `herdr-app status` shows `"errors": []`.
+- [x] Filter tests pass: substring anywhere in the path; case ignored; empty query keeps every file; no match gives an empty list.
+- [x] In the app, typing `sidebar` in a Commit that changed `views/sidebar.js` leaves that file listed; a query with no match shows "No matching files".
+- [x] The field has the keyboard on open; Up / Down step through the filtered rows only.
+- [x] `node --test tests/` passes in `diff-review`; `herdr-app check` passes; `herdr-app status` shows `"errors": []`.

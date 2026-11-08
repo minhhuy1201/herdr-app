@@ -17,6 +17,7 @@
 /mods/*
 !/mods/better-changes/
 !/mods/better-sidebar/
+!/mods/diff-review/
 !/mods/git-graph/
 !/mods/my-files/
 !/mods/my-tabs/

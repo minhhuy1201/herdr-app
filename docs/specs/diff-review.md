@@ -80,7 +80,7 @@ Every read is a read-only Git command or file read on the repository's machine.
 21. As a reviewer, I want line numbers on both columns, so that I can refer to a line.
 22. As a reviewer, I want hunk headers between hunks, so that I see where unchanged lines were skipped.
 23. As a reviewer, I want both columns to scroll sideways together, so that long lines stay comparable.
-24. As a reviewer, I want the diff drawn in my terminal font at 12px, so that code reads like code.
+24. As a reviewer, I want the diff drawn in my terminal font at 14px, so that code reads like code.
 25. As a reviewer, I want a new file's before column and a deleted file's after column to stay empty, so that the kind of change is obvious.
 26. As a reviewer, I want "Binary file" instead of a diff for a binary file, so that the dialog does not show garbage.
 27. As a reviewer, I want a long diff cut at a line limit with a note saying so, so that a huge file does not freeze the window.
@@ -112,7 +112,7 @@ Every read is a read-only Git command or file read on the repository's machine.
   - Dialog background `background`, a 1px `border` on all sides, no radius, no shadow.
   - Header 42px, `chrome`, a 1px `border` below. Commit: short hash in `dim`, subject in `foreground`, truncated, file count in `dim`. Working change: path, then the status letter.
   - File list (Commit only): a 300px column with a 1px `border` on its right. The search field on top is 32px, square, with a 1px `border` below and no other frame. Rows are 28px, the Changes panel's row: Material icon, name, folder in `dim`, `+N` in `ansi2`, `−N` in `ansi1`, status letter coloured as the Changes panel colours it. The selected row is `selected`, hover is `hover`. Rows never round.
-  - Diff: terminal font (`settings().font_family`, falling back to JetBrains Mono), 12px, 20px rows. Two halves of 50% with a 1px `border` between them. Each half has its own line-number column in `dim`. Removed rows have `ansi1` at a low alpha behind them, added rows `ansi2`. A missing cell is `border` at a low alpha. Hunk headers are `dim` on `surface`.
+  - Diff: terminal font (`settings().font_family`, falling back to JetBrains Mono), 14px, 24px rows. Two halves of 50% with a 1px `border` between them. Each half has its own line-number column in `dim`. Removed rows have `ansi1` at a low alpha behind them, added rows `ansi2`. A missing cell is `border` at a low alpha. Hunk headers are `dim` on `surface`.
   - The Material icons come with the mod, as they do with Files, Changes and the Git Graph.
 - **Keys.** The search field holds the keyboard on open. Up and Down move the selection in the filtered list. Escape closes the dialog (Herdr closes the top dialog on Escape). No other keys and no buttons.
 - **Limits.** At most 3000 diff lines per file, lines over 2000 characters cut with `…`. The note "Showing the first 3000 lines" appears under the diff when cut.

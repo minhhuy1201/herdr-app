@@ -1,7 +1,8 @@
 // The diff: opening a file in the centre tab, reading it, and drawing it.
 import { div } from "gpui-kit";
 import { h_flex, Scrollbar, v_virtual_list } from "gpui-base";
-import { spaces, panes, readTextFile, theme, shared, setShared, run, layout } from "herdr";
+import { spaces, panes, readTextFile, theme, shared, setShared, run, layout, openOverlay } from "herdr";
+import { reviewProps } from "../git/review.js";
 import { diffRows, splitDiffRows, conflictRows } from "../git/model.js";
 import { TEXT, SIZE, codeFont, codeSize, Icon, Panel, PaneBar, DiffStat, Message, TextButton } from "./ui.js";
 
@@ -41,7 +42,17 @@ export const diffMethods = {
     return panes().find((p) => p.mod === "better-changes" && ids.has(p.tab))?.tab;
   },
 
+  // Working files and Commit files open the Review dialog; conflicts and the
+  // other scopes keep the centre tab.
+  review(file, scope) {
+    const props = reviewProps(file, scope, { root: this.root, on: this.on, commit: this.selectedCommit });
+    if (!props) return false;
+    openOverlay({ mod: "diff-review", kind: "dialog", width: 0.88, height: 0.86, frame: "none", props });
+    return true;
+  },
+
   pick(file, scope, cx) {
+    if (this.review(file, scope)) return;
     const space = spaces().find((s) => s.active);
     if (!space) return;
     const selected = {

@@ -270,7 +270,7 @@ export function DiffStat({ add, del }) {
 
 export function StatusLetter(status) {
   const t = theme();
-  const color = status === "A" ? t.ansi2 : status === "D" || status === "U" ? t.ansi1 : t.blocked;
+  const color = status === "A" ? t.ansi2 : status === "D" ? t.ansi1 : t.ansi3;
   return div()
     .w(12)
     .flex_none()

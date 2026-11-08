@@ -15,7 +15,7 @@ Spec: [docs/specs/diff-review.md](../../specs/diff-review.md). Terms: [GLOSSARY.
 
 **Model:** sonnet - new Git reads and a new file list view, plus a changed click in the Git Graph
 
-**Status:** todo
+**Status:** done (criteria 2 and the shot part of 4 not verified visually)
 
 - [ ] Git reads tests pass against a real temporary repository: a Commit's files with status and counts; a Merge commit measured against its first parent; one file's patch in a Commit.
 - [ ] In the app, a click on a file of a Commit with many files opens the dialog on that file; another row and Up / Down change the shown diff.

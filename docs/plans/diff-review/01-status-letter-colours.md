@@ -8,7 +8,7 @@ Spec: [docs/specs/diff-review.md](../../specs/diff-review.md) (user story 36, "S
 
 **Model:** sonnet - touches three files in three mods, over the two-file limit for haiku
 
-**Status:** todo
+**Status:** done
 
 - [ ] In Files, Changes and the Git Graph, `M`, `R`, `C`, `T` and `U` letters use `ansi3`; `A` uses `ansi2`; `D` uses `ansi1`. No status letter uses `blocked`.
 - [ ] Agent status uses of `blocked` (badges in the sidebar and in the pane header) are unchanged.

@@ -9,7 +9,7 @@ import { ITEM } from "../graph/detail.js";
 import { fileKind } from "./file-kind.js";
 
 // The same status colours as the Changes panel's StatusLetter.
-const statusColor = (t, status) => (status === "A" ? t.ansi2 : status === "D" || status === "U" ? t.ansi1 : t.blocked);
+const statusColor = (t, status) => (status === "A" ? t.ansi2 : status === "D" ? t.ansi1 : t.ansi3);
 
 export function splitPath(path) {
   const parts = path.split("/");

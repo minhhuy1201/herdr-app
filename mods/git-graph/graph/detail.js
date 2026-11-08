@@ -125,20 +125,3 @@ export function flatten(rows, expanded, detail, chars = 40) {
   }
   return items;
 }
-
-// What Better Changes' `pick` writes for scope "commit". `source` key order matters:
-// the selection's `context` must equal JSON.stringify(source) as Better Changes builds it.
-export function diffEntry({ root, on, commit, file, old, hasTab, now }) {
-  const source = { cwd: root, on: on ?? null };
-  const selection = {
-    context: JSON.stringify(source),
-    root,
-    on: source.on,
-    path: file.path,
-    scope: "commit",
-    at: now,
-    commit: { hash: commit.hash, short: commit.short, subject: commit.subject },
-    file,
-  };
-  return { source, selection, pending: hasTab ? null : (old?.pending ?? now) };
-}

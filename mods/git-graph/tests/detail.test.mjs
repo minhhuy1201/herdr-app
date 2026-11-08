@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildGraph } from "../graph/model.js";
-import { parseCommitFiles, flatten, diffEntry, wrappedLines, ITEM } from "../graph/detail.js";
+import { parseCommitFiles, flatten, wrappedLines, ITEM } from "../graph/detail.js";
 import { READ_ONLY, readCommitDetail } from "../graph/reads.js";
 
 const c = (hash, ...parents) => ({ hash, parents, author: "a", time: 0, subject: hash, refs: "" });
@@ -44,17 +44,6 @@ test("wrappedLines wraps at word boundaries like the text view", () => {
   assert.equal(wrappedLines("Baseline so each git-graph ticket has a diff to review.", 23), 3);
   // 12 chars is 10 usable cells; a word longer than the line breaks inside it.
   assert.equal(wrappedLines("a " + "y".repeat(25), 12), 4);
-});
-
-test("diffEntry matches Better Changes' commit selection shape", () => {
-  const e = diffEntry({ root: "/r", on: undefined, commit: { hash: "h".repeat(40), short: "hhhhhhh", subject: "s", extra: 1 }, file: { path: "p" }, old: undefined, hasTab: false, now: 5 });
-  assert.deepEqual(Object.keys(e.source), ["cwd", "on"]);
-  assert.equal(e.selection.context, JSON.stringify(e.source));
-  assert.equal(e.selection.scope, "commit");
-  assert.deepEqual(Object.keys(e.selection.commit), ["hash", "short", "subject"]);
-  assert.equal(e.pending, 5);
-  assert.equal(diffEntry({ root: "/r", commit: {}, file: {}, hasTab: true, now: 5 }).pending, null);
-  assert.equal(diffEntry({ root: "/r", commit: {}, file: {}, hasTab: false, old: { pending: 2 }, now: 5 }).pending, 2);
 });
 
 test("readCommitDetail against real Git: message, author and files of a merge's first parent", () => {

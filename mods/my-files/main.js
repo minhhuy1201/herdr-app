@@ -159,7 +159,7 @@ export default class Files extends View {
         .child(entry.dir ? svg(`mods/my-files/icons/chevron-${open ? "down" : "right"}.svg`).size(12).flex_none().text_color(t.dim) : div().w(12).flex_none())
         .child(image(`mods/my-files/icons/material/${kind}.svg`).size(16).flex_none())
         .child(div().flex_1().min_w(0).truncate().child(entry.name))
-        .when(Boolean(mark), el => el.child(div().flex_none().text_size(11).text_color(mark === "A" ? t.ansi2 : mark === "D" || mark === "U" ? t.ansi1 : t.blocked).child(mark))));
+        .when(Boolean(mark), el => el.child(div().flex_none().text_size(11).text_color(mark === "A" ? t.ansi2 : mark === "D" ? t.ansi1 : t.ansi3).child(mark))));
       if (entry.dir && open) this.rows(path, depth + 1, out, t);
     }
     return out;

@@ -7,7 +7,7 @@ Spec: [docs/specs/diff-review.md](../../specs/diff-review.md). Terms: [GLOSSARY.
 - The mod's manifest: placed nowhere, a dialog overlay of 88% by 86% of the window, `frame: "none"`. The mod draws its own square 1px `border`; no radius and no shadow anywhere in it.
 - A pure diff module (no Herdr imports): unified diff text to side-by-side rows (hunk headers; context on both sides; removed lines paired with added lines in order, an empty cell on the shorter side); the 3000-line and 2000-character limits with a truncation flag; binary and mode-only output recognised.
 - A Git reads module taking a `git(args)` runner with the Git Graph's read-only flags plus `--no-ext-diff --no-textconv --no-color --literal-pathspecs`: the cached diff for a staged path, the worktree diff for an unstaged path. An untracked file is read with `readTextFile` and shown as all added.
-- The side-by-side view as the spec's "Look" describes: terminal font at 12px, 20px rows, two 50% halves with a 1px `border` between, line numbers per half, red and green row tints at low alpha, a missing cell in `border` at low alpha, hunk headers `dim` on `surface`, both halves scrolling sideways together, loading and error states, "Binary file", the truncation note.
+- The side-by-side view as the spec's "Look" describes: terminal font at 14px, 24px rows, two 50% halves with a 1px `border` between, line numbers per half, red and green row tints at low alpha, a missing cell in `border` at low alpha, hunk headers `dim` on `surface`, both halves scrolling sideways together, loading and error states, "Binary file", the truncation note.
 - Props contract: `{ kind: "working", root, on, path, scope }` with `scope` one of `staged`, `unstaged`, `untracked`.
 - Better Changes opens it with `openOverlay` for those three scopes. Conflicts and the branch range group still open Better Changes' centre tab.
 - Add `mods/diff-review/` to the repository's `.gitignore` allowlist.
@@ -18,7 +18,7 @@ Watch out (from `session-diff`'s notes): handlers inside `v_virtual_list` row re
 
 **Model:** sonnet - a new mod with new parsing logic and a new props interface
 
-**Status:** todo
+**Status:** done
 
 - [ ] Pure diff module tests pass: context on both sides; equal and unequal removed/added runs; new file (empty before); deleted file (empty after); several hunks with headers; line limit with truncation flag; binary and mode-only output.
 - [ ] Git reads tests pass against a real temporary repository (`GIT_CONFIG_GLOBAL=/dev/null`): staged and unstaged diffs of the same file differ; an untracked file reads as all added.

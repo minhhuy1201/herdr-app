@@ -1,0 +1,5 @@
+{
+  "place": "none",
+  "title": "Review dialog",
+  "overlay": { "kind": "dialog", "width": 0.88, "height": 0.86, "frame": "none" }
+}

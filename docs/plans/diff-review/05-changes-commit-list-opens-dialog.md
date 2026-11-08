@@ -8,7 +8,7 @@ Spec: [docs/specs/diff-review.md](../../specs/diff-review.md). Read `~/.config/h
 
 **Model:** sonnet - adds a scope branch in Better Changes' file click
 
-**Status:** todo
+**Status:** done (criteria 1-2 not verified in the app: `herdr-app shot` is stale; covered by unit tests of the branch logic only)
 
 - [ ] In the app, a click on a file of a Commit in the Changes panel's commit list opens the Commit dialog on that file.
 - [ ] A click on a file in the branch range group or a conflicted file still opens Better Changes' centre tab.
