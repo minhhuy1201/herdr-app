@@ -13,7 +13,7 @@ Context for a cold start:
 
 **Model:** haiku - two files, follows the existing icon pattern in `my-tabs`, no interface change
 
-**Status:** todo
+**Status:** done
 
 - [ ] A tab whose pane has `mod === "md-viewer"` shows the Material markdown icon at the same size as other tab icons; other tabs are unchanged.
 - [ ] `docs/upstream-forks.md`: the `my-files` row adds "Markdown files open in an `md-viewer` tab"; the `my-tabs` row adds "Markdown icon for `md-viewer` tabs".
