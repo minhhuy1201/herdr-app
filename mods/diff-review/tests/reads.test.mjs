@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync, readFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { statusOf } from "../diff/status.js";
 import { READ_ONLY, readWorkingChange, readCommitFiles, readCommitFile, readRangeFile } from "../diff/reads.js";
 
 const env = {
@@ -159,6 +160,25 @@ test("a Branch range file's diff covers every commit from the base and nothing u
     assert.deepEqual(added(fresh), ["x", "y"]);
     assert.ok(fresh.rows.filter((p) => p.kind === "pair").every((p) => p.left === null));
     await assert.rejects(readRangeFile(git, "nothash", "edit.txt"));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a symlink turned into a file reads as a type change with both sections' lines only", async () => {
+  const { dir, run, git, readText } = repo();
+  try {
+    symlinkSync("target", join(dir, "l"));
+    run("add", "l");
+    run("commit", "-q", "-m", "link");
+    rmSync(join(dir, "l"));
+    writeFileSync(join(dir, "l"), "body\n");
+    const r = await readWorkingChange({ git, readText, path: "l", scope: "unstaged" });
+    assert.equal(statusOf(r), "T");
+    const pairs = r.rows.filter((p) => p.kind === "pair");
+    assert.deepEqual(pairs.map((p) => [p.left?.text ?? null, p.right?.text ?? null]), [["target", null], [null, "body"]]);
+    assert.deepEqual(pairs.map((p) => [p.left?.line ?? null, p.right?.line ?? null]), [[1, null], [null, 1]]);
+    assert.equal(r.rows.filter((p) => p.kind === "hunk").length, 2);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

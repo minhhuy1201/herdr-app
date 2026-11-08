@@ -29,25 +29,38 @@ function pairRuns(lines) {
   return rows;
 }
 
-// The file's status letter comes from the header: line counts cannot tell an emptied
+// Git prints one section per path, and two for a type change (deleted, then new).
+function sections(all) {
+  const starts = all.flatMap((line, i) => (line.startsWith("diff --git ") ? [i] : []));
+  const parts = starts.length ? starts.map((at, k) => all.slice(at, starts[k + 1] ?? all.length)) : [all];
+  return parts.map((lines) => {
+    const first = lines.findIndex((line) => HUNK.test(line));
+    return first < 0 ? { header: lines, body: [] } : { header: lines.slice(0, first), body: lines.slice(first) };
+  });
+}
+
+// The status letter comes from the headers: line counts cannot tell an emptied
 // file from a deleted one, and a binary diff has no lines at all.
-function headerStatus(lines) {
-  if (lines.some((line) => line.startsWith("new file mode "))) return "A";
-  if (lines.some((line) => line.startsWith("deleted file mode "))) return "D";
+function headerStatus(headers) {
+  const has = (prefix) => headers.some((lines) => lines.some((line) => line.startsWith(prefix)));
+  const added = has("new file mode ");
+  const deleted = has("deleted file mode ");
+  if (added && deleted) return "T";
+  if (added) return "A";
+  if (deleted) return "D";
   return "M";
 }
 
 export function parseDiff(text) {
-  const all = text.replace(/\n$/, "").split("\n");
-  const first = all.findIndex((line) => HUNK.test(line));
-  const status = headerStatus(first < 0 ? all : all.slice(0, first));
-  if (first < 0) {
+  const parts = sections(text.replace(/\n$/, "").split("\n"));
+  const status = headerStatus(parts.map((part) => part.header));
+  const body = parts.flatMap((part) => part.body);
+  if (!body.length) {
     if (BINARY.test(text)) return { type: "binary", status };
     if (/^Subproject commit /m.test(text)) return { type: "mode", note: "Submodule change", status };
     if (/^(old|new) mode /m.test(text)) return { type: "mode", note: "Mode change", status };
     return { type: "empty", status };
   }
-  const body = all.slice(first);
   if (body.some((line) => /^[-+]Subproject commit /.test(line))) return { type: "mode", note: "Submodule change", status };
   const truncated = body.length > MAX_LINES;
   let oldLine = 0;
