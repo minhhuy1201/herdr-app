@@ -352,7 +352,7 @@ export const diffMethods = {
     const head = this.head();
     return PaneBar()
       .child(Icon("file", 14).text_color(t.dim))
-      .child(div().flex_none().truncate().max_w(260).font_medium().child(head.title))
+      .child(div().flex_shrink_1().min_w(0).truncate().max_w(260).font_medium().child(head.title))
       .child(div().flex_1().min_w(0).truncate().text_color(t.dim).child(head.detail))
       .child(DiffStat(head))
       .child(this.FullFileButton());

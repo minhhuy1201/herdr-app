@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { READ_ONLY, readGraph, readRoot, readGitDirs, joinPages, refsChanged } from "../graph/reads.js";
+import { READ_ONLY, readGraph, readRoot, readGitDirs, joinPages, refsChanged, repoName, readRepoName } from "../graph/reads.js";
 
 const env = {
   ...process.env,
@@ -144,4 +144,28 @@ test("refsChanged reacts to HEAD and refs, not to the index or lock files", () =
   assert.equal(refsChanged(d, [`${d}/packed-refs`]), true);
   assert.equal(refsChanged(d, [d]), true);
   assert.equal(refsChanged(d, [`${d}/index`, `${d}/HEAD.lock`, `${d}/refs/heads/main.lock`]), false);
+});
+
+test("repoName takes the repository name from any remote URL form", () => {
+  assert.equal(repoName("git@github.com:minhhuy1201/herdr-config.git"), "herdr-config");
+  assert.equal(repoName("https://github.com/owner/my-repo.git"), "my-repo");
+  assert.equal(repoName("https://github.com/owner/my-repo/"), "my-repo");
+  assert.equal(repoName("ssh://git@host:2222/group/sub/app.git"), "app");
+  assert.equal(repoName("/srv/git/local-repo.git"), "local-repo");
+  assert.equal(repoName("  "), null);
+});
+
+test("readRepoName prefers origin, falls back to another remote, then to the root folder", async () => {
+  const { dir, git, commit } = repo();
+  try {
+    commit("base");
+    const name = dir.split("/").at(-1);
+    assert.equal(await readRepoName(runner(dir), dir), name);
+    git("remote", "add", "upstream", "https://example.com/team/upstream-repo.git");
+    assert.equal(await readRepoName(runner(dir), dir), "upstream-repo");
+    git("remote", "add", "origin", "git@example.com:me/origin-repo.git");
+    assert.equal(await readRepoName(runner(dir), dir), "origin-repo");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

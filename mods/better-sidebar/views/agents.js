@@ -738,7 +738,6 @@ export class Agents {
       .id(`pin-${a.address}`)
       .flex_none()
       .p(2)
-      .rounded(4)
       .text_color(t.dim)
       .cursor_pointer()
       .hover((s) => s.bg(t.hover).text_color(t.foreground))

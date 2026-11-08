@@ -100,13 +100,13 @@ function refLabel(label, t) {
   const tag = label.kind === "tag";
   const color = tag ? t.ansi3 : label.local ? t.ansi4 : t.ansi5;
   return h_flex()
-    .flex_none()
+    .flex_shrink_1()
+    .min_w(0)
     .max_w(150)
     .items_center()
     .gap(3)
     .px(5)
     .h(18)
-    .rounded(4)
     .border_1()
     .border_color(color)
     .when(!tag && withAlpha(color, "26"), (el) => el.bg(withAlpha(color, "26")))
@@ -155,16 +155,26 @@ export function commitRow(row, laneCount, id, expanded = false) {
     .pr(10)
     .when(row.head && withAlpha(t.accent, "22"), (el) => el.bg(withAlpha(t.accent, "22")))
     .when(expanded, (el) => el.bg(t.selected))
+    .cursor_pointer()
     .hover((s) => s.bg(t.hover))
     .child(graphColumn(row, laneCount))
-    .children(refLabels(row, t))
+    // Labels and subject share what author and age leave, so neither pushes those off.
     .child(
-      div()
+      h_flex()
         .flex_1()
         .min_w(0)
-        .truncate()
-        .text_color(row.merge ? t.muted : t.foreground)
-        .child(row.commit.subject),
+        .overflow_hidden()
+        .gap(6)
+        .items_center()
+        .children(refLabels(row, t))
+        .child(
+          div()
+            .flex_1()
+            .min_w(0)
+            .truncate()
+            .text_color(row.merge ? t.muted : t.foreground)
+            .child(row.commit.subject),
+        ),
     )
     .child(
       div()

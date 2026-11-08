@@ -52,17 +52,39 @@ export function parseCommitMeta(text) {
   return { author, time: Number(at), message: message.join("\0").trim() };
 }
 
-export const ITEM = { commit: 28, line: 16, pad: 12, meta: 22, hash: 28, state: 24, file: 28 };
+export const ITEM = { commit: 28, line: 18, pad: 12, meta: 22, hash: 28, state: 24, file: 28 };
 
 // Width in character cells: wide (CJK, fullwidth, emoji) characters take two.
 const WIDE = /[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe6f\uff00-\uff60\uffe0-\uffe6]|[\ud800-\udbff][\udc00-\udfff]/g;
 export const cells = (line) => line.length + (line.match(WIDE)?.length ?? 0);
 
-// How many wrapped lines a message takes at about `chars` cells per line. Wrapping at
-// word boundaries wastes some of each line, so the usable width is a little under `chars`.
+// How many lines one paragraph takes at `width` cells, wrapped at spaces; a word longer
+// than the line breaks inside it.
+function wrapLine(line, width) {
+  let lines = 1;
+  let used = 0;
+  for (const word of line.split(" ").filter(Boolean)) {
+    let size = cells(word);
+    const gap = used ? 1 : 0;
+    if (used + gap + size <= width) {
+      used += gap + size;
+      continue;
+    }
+    if (used) lines++;
+    while (size > width) {
+      size -= width;
+      lines++;
+    }
+    used = size;
+  }
+  return lines;
+}
+
+// How many wrapped lines a message takes at about `chars` cells per line. `chars` is an
+// estimate, so the line is taken a little shorter to never under-count.
 export function wrappedLines(text, chars) {
   const width = Math.max(10, Math.floor(chars * 0.9));
-  return text.split("\n").reduce((n, line) => n + Math.max(1, Math.ceil(cells(line) / width)), 0);
+  return text.split("\n").reduce((n, line) => n + wrapLine(line, width), 0);
 }
 
 /**
@@ -80,7 +102,8 @@ export function flatten(rows, expanded, detail, chars = 40) {
     const lanes = [...row.pass, ...row.branch];
     const mine = detail?.hash === hash ? detail : null;
     const add = (item) => items.push({ lanes, hash, ...item });
-    const message = mine?.meta?.message || row.commit.subject;
+    // The subject only: a long body would crowd the panel.
+    const message = row.commit.subject;
     add({
       key: `msg:${hash}`,
       kind: "message",

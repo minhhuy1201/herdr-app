@@ -26,7 +26,6 @@ export class Footer {
       .gap(3)
       .flex_none()
       .items_center()
-      .rounded(6)
       .text_color(t.muted)
       .cursor_pointer()
       .hover((s) => s.bg(t.hover).text_color(t.foreground))

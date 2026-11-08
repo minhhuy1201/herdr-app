@@ -3,7 +3,7 @@
 import { View, div } from "gpui-kit";
 import { v_flex, Scrollbar, v_virtual_list } from "gpui-base";
 import { exec, spaces, panes, focused, layout, watchFolder, shared, setShared, run, appHome, readTextFile } from "herdr";
-import { READ_ONLY, PAGE_SIZE, readRoot, readGitDirs, readGraph, joinPages, refsChanged, readCommitDetail } from "./graph/reads.js";
+import { READ_ONLY, PAGE_SIZE, readRoot, readGitDirs, readGraph, joinPages, refsChanged, readCommitDetail, readRepoName } from "./graph/reads.js";
 import { flatten, diffEntry } from "./graph/detail.js";
 import { pickLocation, modVisible } from "./graph/location.js";
 import { Panel, PanelHeader, IconButton, Message, Icon } from "./views/ui.js";
@@ -15,7 +15,7 @@ const REMOTE_POLL_MS = 10000; // a remote repository can't be watched
 const LOAD_AHEAD = 8; // rows from the end of the list that trigger the next page
 const SCOPE_KEY = "scope";
 const TAB_OPEN_TIMEOUT_MS = 1500; // as Better Changes: rapid clicks must not open two tabs
-const CHAR_WIDTH = 7; // px per character of the wrapped message, a generous estimate
+const CHAR_WIDTH = 7.5; // px per character of the wrapped message: a 12px monospace cell is 7.2
 const GUTTER = 70; // lanes and padding left of the message
 const EMPTY = { rows: [], laneCount: 0, state: null, done: false };
 
@@ -52,6 +52,7 @@ export default class GitGraph extends View {
     this.again = false; // a reload was asked for while one ran
     this.loaded = false;
     this.root = null;
+    this.repoName = null;
     this.watchId = 0;
     this.watching = null;
     this.expanded = null; // hash of the one expanded commit
@@ -104,6 +105,7 @@ export default class GitGraph extends View {
       this.error = null;
       this.loaded = false;
       this.root = null;
+      this.repoName = null;
       this.moreError = null;
       // Loops watching the old repository end at their next event.
       this.watchId++;
@@ -116,12 +118,14 @@ export default class GitGraph extends View {
       const root = await readRoot(git);
       if (!root) {
         this.root = null;
+        this.repoName = null;
         this.error = "Not a Git repository";
         this.graph = EMPTY;
         return;
       }
       this.root = root;
       const rootGit = (args) => git(args, root);
+      this.repoName = await readRepoName(rootGit, root);
       this.watch(taskCx, rootGit, location.on);
       this.graph = await readGraph(rootGit, {
         count: Math.max(PAGE_SIZE, this.graph.rows.length),
@@ -302,7 +306,7 @@ export default class GitGraph extends View {
     const all = this.scope === "all";
     return PanelHeader()
       .child(Icon("git-branch", 15))
-      .child(div().flex_1().font_semibold().child("Git Graph"))
+      .child(div().flex_1().min_w(0).truncate().font_semibold().child(this.repoName ?? "Git Graph"))
       .child(
         IconButton({
           id: "git-graph-scope",

@@ -7,7 +7,6 @@ import { theme } from "herdr";
 
 export const TEXT = { caption: 11, small: 12, body: 13 };
 export const SIZE = { header: 42, row: 28, icon: 26 };
-const RADIUS = { control: 6, panel: 10 };
 export const SPIN_MS = 900;
 
 const ICONS = "mods/git-graph/icons";
@@ -44,7 +43,6 @@ export function IconButton({ id, icon, label, onClick, spinning = false, active 
     .flex()
     .items_center()
     .justify_center()
-    .rounded(RADIUS.control)
     .text_color(active ? t.foreground : t.dim)
     .accessibility_label(label)
     .tooltip(label)

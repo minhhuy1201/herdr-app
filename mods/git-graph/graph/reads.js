@@ -87,3 +87,21 @@ export async function readCommitDetail(git, hash) {
     if (r.code !== 0) throw Error((r.stderr || r.stdout).trim() || "Cannot read commit");
   return { meta: parseCommitMeta(meta.stdout), files: parseCommitFiles(numstat.stdout, names.stdout) };
 }
+
+// "owner/app.git", "git@host:owner/app.git", "/srv/app.git" all name the repository "app".
+export function repoName(url) {
+  const last = url.trim().replace(/(\/+)$/, "").split(/[/:]/).at(-1);
+  const name = last.replace(/(\.git)$/, "");
+  return name || null;
+}
+
+// The name of the repository's remote (origin first), else its root folder's name.
+export async function readRepoName(git, root) {
+  const folder = root.split(/[/\\]/).filter(Boolean).at(-1);
+  const list = await git(["remote"]);
+  const remotes = list.code === 0 ? list.stdout.split("\n").map((r) => r.trim()).filter(Boolean) : [];
+  const remote = remotes.includes("origin") ? "origin" : remotes[0];
+  if (!remote) return folder;
+  const url = await git(["remote", "get-url", remote]);
+  return (url.code === 0 && repoName(url.stdout)) || folder;
+}

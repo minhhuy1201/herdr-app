@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildGraph } from "../graph/model.js";
-import { parseCommitFiles, flatten, diffEntry, wrappedLines } from "../graph/detail.js";
+import { parseCommitFiles, flatten, diffEntry, wrappedLines, ITEM } from "../graph/detail.js";
 import { READ_ONLY, readCommitDetail } from "../graph/reads.js";
 
 const c = (hash, ...parents) => ({ hash, parents, author: "a", time: 0, subject: hash, refs: "" });
@@ -26,6 +26,8 @@ test("flatten: only the expanded commit gets detail items, carrying the lanes be
   const items = flatten(rows, "m", detail, 40);
   assert.deepEqual(items.map((i) => i.kind), ["commit", "message", "meta", "hash", "file", "commit", "commit", "commit"]);
   assert.deepEqual(items[1].lanes.map((l) => l.lane), [0, 1]);
+  assert.equal(items[1].message, rows[0].commit.subject);
+  assert.equal(items[1].height, ITEM.line + ITEM.pad);
   assert.equal(flatten(rows, null, null).length, 4);
   // a detail for another commit is ignored: the expanded one shows Loading
   const stale = flatten(rows, "m", { ...detail, hash: "f" }, 40);
@@ -35,6 +37,13 @@ test("flatten: only the expanded commit gets detail items, carrying the lanes be
 test("wrappedLines counts wrapped and blank lines", () => {
   assert.equal(wrappedLines("a\n\nb", 40), 3);
   assert.equal(wrappedLines("x".repeat(95), 40), 3);
+});
+
+test("wrappedLines wraps at word boundaries like the text view", () => {
+  // 23 chars is 20 usable cells: "Baseline so each" | "git-graph ticket has" | "a diff to review."
+  assert.equal(wrappedLines("Baseline so each git-graph ticket has a diff to review.", 23), 3);
+  // 12 chars is 10 usable cells; a word longer than the line breaks inside it.
+  assert.equal(wrappedLines("a " + "y".repeat(25), 12), 4);
 });
 
 test("diffEntry matches Better Changes' commit selection shape", () => {

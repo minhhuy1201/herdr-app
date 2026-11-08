@@ -23,7 +23,6 @@ export const paneHeaderMethods = {
     return div()
       .id(id)
       .p(3)
-      .rounded(4)
       .text_color(t.dim)
       .hover((s) => s.bg(t.hover).text_color(t.foreground))
       .on_click((_e, cx) => {
@@ -64,7 +63,8 @@ export const paneHeaderMethods = {
       .when(Boolean(pic), (el) => el.child(pic))
       .child(
         div()
-          .flex_none()
+          .flex_shrink_1()
+          .min_w(0)
           .truncate()
           .max_w(260)
           .font_medium()
@@ -101,7 +101,6 @@ export const paneHeaderMethods = {
             .h(18)
             .flex()
             .items_center()
-            .rounded(5)
             .bg(`${t.blocked}26`)
             .text_size(10.5)
             .font_semibold()
