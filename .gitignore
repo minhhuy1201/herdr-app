@@ -1,0 +1,18 @@
+# Track only files the person owns; Herdr writes the rest.
+/*
+!/.gitignore
+!/docs/
+!/keys.json
+!/settings.json
+!/layouts/
+/layouts/*
+!/layouts/better-main.json
+!/mods/
+/mods/*
+!/mods/better-changes/
+!/mods/better-sidebar/
+!/mods/git-graph/
+!/mods/my-tabs/
+gpui-kit.d.ts
+herdr.d.ts
+jsconfig.json
