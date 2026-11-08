@@ -14,7 +14,7 @@ Context for a cold start:
 
 **Model:** sonnet - shared registry and tab-binding logic
 
-**Status:** todo
+**Status:** done (real clicks need a human check)
 
 - [ ] Pure module, no Herdr imports, with functions over plain data: find a live tab for `{ file, on }` in the registry; prune entries whose tab is gone (a tab is live while `spaces()` lists it and `panes()` has an `md-viewer` pane in it); bind a pending open to a new `md-viewer` tab not in the snapshot taken before `tab.new`.
 - [ ] `node --test` cases pass: empty registry asks to open; live entry for same file and machine selects it; same file on another machine opens; gone tab is pruned; new `md-viewer` tab after a pending open is bound; an unrelated new tab is not bound.

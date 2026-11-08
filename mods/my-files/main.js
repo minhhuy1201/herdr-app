@@ -1,8 +1,9 @@
 // A lazy file browser for the focused pane's folder, with bounded read-only previews.
 import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, Editor, EditorState } from "gpui-base";
-import { spaces, panes, focused, exec, run, readTextFile, watchFolder, theme, settings, window } from "herdr";
+import { spaces, panes, focused, exec, run, readTextFile, watchFolder, theme, settings, window, shared, setShared, machines } from "herdr";
 import { fileKind, isMarkdown } from "./file-kind.js";
+import { viewerTabs, prune, decide, bind } from "./viewer-tabs.js";
 
 function location() {
   const space = spaces().find(s => s.active), f = focused();
@@ -129,8 +130,22 @@ export default class Files extends View {
   }
 
   openMarkdown(path) {
-    const file = `${this.root}/${path}`;
-    run("tab.new", { name: path.split("/").pop(), mod: "md-viewer", props: { file, on: this.on ?? null } });
+    const target = { file: `${this.root}/${path}`, on: this.on ?? null };
+    const choice = decide(shared("md-viewer.tabs"), target, spaces(), panes());
+    if (choice.select) { run("tab.select", { id: choice.select }); return; }
+    this.before = viewerTabs(spaces(), panes());
+    this.openPending = target;
+    run("tab.new", { name: path.split("/").pop(), mod: "md-viewer", props: target });
+  }
+
+  // run() returns no tab id, so a new viewer tab is bound on a later render. Until every machine's
+  // layout is ready, spaces() lacks its tabs and pruning would forget live viewers.
+  syncTabs() {
+    if (machines().some(m => m.layout !== "ready")) return;
+    const stored = shared("md-viewer.tabs") ?? {};
+    const bound = bind(prune(stored, spaces(), panes()), this.openPending, this.before ?? [], spaces(), panes());
+    this.openPending = bound.pending;
+    if (JSON.stringify(bound.registry) !== JSON.stringify(stored)) setShared("md-viewer.tabs", bound.registry);
   }
 
   show(path, cx) {
@@ -172,6 +187,7 @@ export default class Files extends View {
 
   render(cx) {
     if (key() !== this.context?.key) this.refresh(cx);
+    this.syncTabs();
     const t = theme();
     return v_flex().id("files").size_full().min_h(0).overflow_hidden().bg(t.chrome).text_color(t.foreground).text_size(13)
       .child(h_flex().h(42).flex_none().px(14).gap(8).items_center()
