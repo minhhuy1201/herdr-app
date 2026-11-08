@@ -1,10 +1,10 @@
 // Review dialog: a flat, read-only side-by-side diff. Opened with openOverlay by Better
 // Changes and the Git Graph. Props: { kind: "working", root, on, path, scope: "staged" | "unstaged" | "untracked" }
-// or { kind: "commit", root, on, hash, path }.
+// { kind: "commit", root, on, hash, path } or { kind: "range", root, on, base, path }.
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState } from "gpui-base";
 import { exec, props, readTextFile, settings, theme } from "herdr";
-import { READ_ONLY, readWorkingChange, readCommitFiles, readCommitFile } from "./diff/reads.js";
+import { READ_ONLY, readWorkingChange, readCommitFiles, readCommitFile, readRangeFile } from "./diff/reads.js";
 import { filterFiles, stepPath } from "./diff/list.js";
 import { statusOf } from "./diff/status.js";
 import { Header, CommitHeader, Message } from "./views/chrome.js";
@@ -14,7 +14,7 @@ import { diffBody, widthOf } from "./views/side-by-side.js";
 export default class ReviewDialog extends View {
   init(_props, cx) {
     const p = props();
-    this.kind = p?.kind === "commit" ? "commit" : "working";
+    this.kind = ["commit", "range"].includes(p?.kind) ? p.kind : "working";
     this.path = p?.path ?? "";
     this.scope = p?.scope;
     this.hash = p?.hash ?? "";
@@ -39,6 +39,7 @@ export default class ReviewDialog extends View {
     if (!p?.root) return;
     const git = (args) => exec("git", [...READ_ONLY, ...args], { cwd: p.root, on: p.on });
     if (this.kind === "commit") return this.openCommit(cx, git);
+    if (this.kind === "range") return this.load(cx, () => readRangeFile(git, p.base, p.path));
     this.load(cx, () => readWorkingChange({
       git,
       readText: (rel) => readTextFile(`${p.root}/${rel}`, { on: p.on }),

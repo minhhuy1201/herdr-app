@@ -13,7 +13,7 @@ Spec: [docs/specs/diff-review.md](../../specs/diff-review.md). Terms: [GLOSSARY.
 
 **Model:** sonnet - one new props kind and one read, following tickets 02 and 05
 
-**Status:** todo
+**Status:** done (criterion 3 checked by opening the dialog with real range props from a throwaway mod: `herdr-app status` showed the `diff-review` overlay and no errors; `herdr-app shot` is stale here, so no visual check, and no real click)
 
 Watch out:
 - `init(_props, cx)` gets no overlay props: keep using `props()` from `"herdr"`.
@@ -22,8 +22,8 @@ Watch out:
 - `HEAD` is read when the dialog opens, not when the panel listed the file. If a Commit lands in between, the dialog shows the newer range. Accept this.
 - Avoid editing several mod files at once while a dialog is open: hot reload can leave the overlay stuck. Close it with `herdr-app do overlay.close`.
 
-- [ ] `reviewProps` unit tests in `better-changes`: scope `committed` gives `{ kind: "range", root, on, base, path }`; a conflicted file and a missing `base` give null.
-- [ ] `diff-review` reads test against a real temporary repository (`GIT_CONFIG_GLOBAL=/dev/null`): a branch with two Commits over a base shows both Commits' lines in one file's range diff; an uncommitted edit to that file is not in it; a file added on the branch reads as all added.
+- [x] `reviewProps` unit tests in `better-changes`: scope `committed` gives `{ kind: "range", root, on, base, path }`; a conflicted file and a missing `base` give null.
+- [x] `diff-review` reads test against a real temporary repository (`GIT_CONFIG_GLOBAL=/dev/null`): a branch with two Commits over a base shows both Commits' lines in one file's range diff; an uncommitted edit to that file is not in it; a file added on the branch reads as all added.
 - [ ] In the app, a click on a file in the "Committed" group opens the one-file dialog with the merge base to HEAD diff; Escape closes it.
-- [ ] A click on a conflicted file still opens Better Changes' centre tab.
+- [x] A click on a conflicted file still opens Better Changes' centre tab.
 - [ ] `node --test tests/` passes in `diff-review` and `better-changes`; `herdr-app check` passes for both; `herdr-app status` shows `"errors": []`; a `herdr-app shot` of a range file dialog.

@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { READ_ONLY, readWorkingChange, readCommitFiles, readCommitFile } from "../diff/reads.js";
+import { READ_ONLY, readWorkingChange, readCommitFiles, readCommitFile, readRangeFile } from "../diff/reads.js";
 
 const env = {
   ...process.env,
@@ -135,6 +135,30 @@ test("one file's patch in a commit holds only that file, and a glob path is lite
     const glob = await readCommitFile(git, hash, "[a].txt");
     assert.equal(glob.rows.filter((p) => p.right?.kind === "+").length, 1);
     await assert.rejects(readCommitFile(git, "nothash", "edit.txt"));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a Branch range file's diff covers every commit from the base and nothing uncommitted", async () => {
+  const { dir, run, git, put } = commitRepo();
+  try {
+    const base = run("rev-parse", "HEAD").toString().trim();
+    run("checkout", "-q", "-b", "feat");
+    put("edit.txt", "ONE\ntwo\n");
+    run("commit", "-q", "-am", "first");
+    put("edit.txt", "ONE\nTWO\n");
+    put("added.txt", "x\ny\n");
+    run("add", "-A");
+    run("commit", "-q", "-m", "second");
+    put("edit.txt", "ONE\nTWO\nDIRTY\n");
+    const edit = await readRangeFile(git, base, "edit.txt");
+    const added = (r) => r.rows.filter((p) => p.kind === "pair" && p.right?.kind === "+").map((p) => p.right.text);
+    assert.deepEqual(added(edit), ["ONE", "TWO"]);
+    const fresh = await readRangeFile(git, base, "added.txt");
+    assert.deepEqual(added(fresh), ["x", "y"]);
+    assert.ok(fresh.rows.filter((p) => p.kind === "pair").every((p) => p.left === null));
+    await assert.rejects(readRangeFile(git, "nothash", "edit.txt"));
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

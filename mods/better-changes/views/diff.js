@@ -42,10 +42,15 @@ export const diffMethods = {
     return panes().find((p) => p.mod === "better-changes" && ids.has(p.tab))?.tab;
   },
 
-  // Working files and Commit files open the Review dialog; conflicts and the
+  // Working, Commit and Branch range files open the Review dialog; conflicts and the
   // other scopes keep the centre tab.
   review(file, scope) {
-    const props = reviewProps(file, scope, { root: this.root, on: this.on, commit: this.selectedCommit });
+    const props = reviewProps(file, scope, {
+      root: this.root,
+      on: this.on,
+      commit: this.selectedCommit,
+      base: this.committed?.base,
+    });
     if (!props) return false;
     openOverlay({ mod: "diff-review", kind: "dialog", width: 0.88, height: 0.86, frame: "none", props });
     return true;

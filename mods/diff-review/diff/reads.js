@@ -85,6 +85,12 @@ export async function readCommitFiles(git, hash) {
   return { subject: subject.stdout.trim(), files: parseCommitFiles(numstat.stdout, names.stdout) };
 }
 
+export async function readRangeFile(git, base, path) {
+  const r = await git(["--literal-pathspecs", "diff", "--unified=3", ...DIFF_FLAGS, base, "HEAD", "--", path]);
+  if (r.code !== 0) throw failure(r, "Cannot read diff");
+  return parseDiff(r.stdout);
+}
+
 export async function readCommitFile(git, hash, path) {
   const r = await git([
     "--literal-pathspecs",
