@@ -8,9 +8,9 @@ Spec: [docs/specs/git-graph.md](../../specs/git-graph.md)
 
 **Model:** haiku - stages and commits files that already exist, with no logic
 
-**Status:** todo
+**Status:** done
 
-- [ ] `git status` shows only allowlisted paths: `.gitignore`, `docs/`, `keys.json`, `settings.json`, `layouts/better-main.json`, `mods/better-changes/`, `mods/better-sidebar/`. It shows no `.d.ts`, no `jsconfig.json` and no app-written state such as `view.json`, `shared.json` or `layouts/.state/`.
-- [ ] Before committing, the branch is `feat/git-graph` (check with `git rev-parse --abbrev-ref HEAD`). Don't commit on `main`.
-- [ ] One commit holds everything. Its message comes from `caveman:caveman-commit`, for example `chore: track personal herdr layout, mods and git-graph spec`.
-- [ ] Nothing is pushed. The repository has no remote.
+- [x] `git status` shows only allowlisted paths: `.gitignore`, `docs/`, `keys.json`, `settings.json`, `layouts/better-main.json`, `mods/better-changes/`, `mods/better-sidebar/`. It shows no `.d.ts`, no `jsconfig.json` and no app-written state such as `view.json`, `shared.json` or `layouts/.state/`.
+- [x] Before committing, the branch is `feat/git-graph` (check with `git rev-parse --abbrev-ref HEAD`). Don't commit on `main`.
+- [x] One commit holds everything. Its message comes from `caveman:caveman-commit`, for example `chore: track personal herdr layout, mods and git-graph spec`.
+- [x] Nothing is pushed. The repository has no remote.

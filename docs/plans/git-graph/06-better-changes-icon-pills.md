@@ -8,7 +8,7 @@ Spec: [docs/specs/git-graph.md](../../specs/git-graph.md). Read `~/.config/herdr
 
 **Model:** haiku - 2 files (the design kit's `HeaderTab` and its two callers in the sidebar view), following the existing `IconButton` pattern (`.tooltip(label)` plus `.accessibility_label(label)`), with no new logic
 
-**Status:** todo
+**Status:** implemented, commit pending
 
 - [ ] `HeaderTab` takes an `icon` and draws `Icon(icon, 14)` instead of the visible label text. The label moves to `.tooltip(label)` and `.accessibility_label(label)`. The badge, the active style, the hover and `role("tab")` stay.
 - [ ] Changes uses a changes or diff glyph. Commits uses the existing `commit` icon. If a new SVG is needed, add it to Better Changes' `icons/` folder in the same Lucide style.

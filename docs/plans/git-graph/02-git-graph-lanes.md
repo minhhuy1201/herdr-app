@@ -17,16 +17,16 @@ Context for a cold start:
 
 **Model:** sonnet - new mod with lane-assignment logic across several files
 
-**Status:** todo
+**Status:** implemented, commit pending
 
-- [ ] A pure graph model module with no Herdr imports, so `node --test` can import it as ESM. It takes the raw output of one NUL-separated `git log` call (hash, parent hashes, author, unix time, subject, raw `%D` refs) and returns rows. Each row holds the commit, its lane, its colour index, and the lines that pass through, branch off or merge into that row.
-- [ ] Lane rules: a commit takes the lane reserved by its first child. Its first parent keeps that lane. Each other parent gets a free lane, or joins a lane that already waits for it. A lane is freed when nothing waits on it.
-- [ ] `node --test` model cases pass: a linear history, one branch and merge, an octopus merge, two root commits, and lane reuse after a merge.
-- [ ] `node --test` real-Git case passes: build a temporary repository with branches and a merge, run the mod's own log arguments, feed the output to the model, and assert the lane count and the merge row.
-- [ ] Every git call is an argument list through `exec("git", [...], { cwd, on })`, with the read-only flags. The mod never writes to the repository.
-- [ ] The view is a header ("Git Graph" plus a refresh icon button) and one `v_virtual_list` of 28px rows. Each row has the graph column (nodes and line segments drawn with absolutely-positioned `div`s, lane colours cycling theme `ansi` colours, merge commits muted), the subject (truncated), the author and the age in dim caption text.
-- [ ] A remote space runs git on its machine (`on: space.machine`).
-- [ ] A focused folder outside any repository shows "Not a Git repository". A repository with no commits shows "No commits yet".
-- [ ] `herdr-app check ~/.config/herdr-app/mods/git-graph` passes. `layouts/better-main.json` has no `.error` file and `herdr-app status` shows no errors.
+- [x] A pure graph model module with no Herdr imports, so `node --test` can import it as ESM. It takes the raw output of one NUL-separated `git log` call (hash, parent hashes, author, unix time, subject, raw `%D` refs) and returns rows. Each row holds the commit, its lane, its colour index, and the lines that pass through, branch off or merge into that row.
+- [x] Lane rules: a commit takes the lane reserved by its first child. Its first parent keeps that lane. Each other parent gets a free lane, or joins a lane that already waits for it. A lane is freed when nothing waits on it.
+- [x] `node --test` model cases pass: a linear history, one branch and merge, an octopus merge, two root commits, and lane reuse after a merge.
+- [x] `node --test` real-Git case passes: build a temporary repository with branches and a merge, run the mod's own log arguments, feed the output to the model, and assert the lane count and the merge row.
+- [x] Every git call is an argument list through `exec("git", [...], { cwd, on })`, with the read-only flags. The mod never writes to the repository.
+- [x] The view is a header ("Git Graph" plus a refresh icon button) and one `v_virtual_list` of 28px rows. Each row has the graph column (nodes and line segments drawn with absolutely-positioned `div`s, lane colours cycling theme `ansi` colours, merge commits muted), the subject (truncated), the author and the age in dim caption text.
+- [x] A remote space runs git on its machine (`on: space.machine`).
+- [x] A focused folder outside any repository shows "Not a Git repository". A repository with no commits shows "No commits yet".
+- [x] `herdr-app check ~/.config/herdr-app/mods/git-graph` passes. `layouts/better-main.json` has no `.error` file and `herdr-app status` shows no errors.
 - [ ] After `herdr-app do layout.select '{"stack":"panel-body","child":"git-graph"}'` and `layout.show --id panel`, with a terminal focused in a real repository that has merges, `herdr-app shot` shows lanes joined at forks and merges. Read the PNG and confirm it.
 - [ ] Commit with `caveman:caveman-commit` on `feat/git-graph`.
