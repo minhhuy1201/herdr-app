@@ -15,7 +15,6 @@ export const TEXT = {
   menu: 12.8,
   body: 13,
 };
-const RADIUS = { small: 4, control: 6, row: 7 };
 export const SIZE = { group: 30, menu: 31, row: 28, icon: 26, iconSmall: 20 };
 
 export const Icon = (name, size = 14) =>
@@ -43,7 +42,6 @@ export function IconButton({ id, icon, label, onClick, iconSize = 15, muted = fa
     .flex()
     .items_center()
     .justify_center()
-    .rounded(RADIUS.control)
     .text_color(muted ? t.dim : t.foreground)
     .cursor_pointer()
     .accessibility_label(label)
@@ -122,7 +120,6 @@ export function Menu({ id, open, onOpenChange, focus, trigger, children, width =
     .w(width)
     .p(5)
     .gap(1)
-    .rounded(RADIUS.row)
     .border_1()
     .border_color(t.border)
     .bg(t.popover)
@@ -164,7 +161,6 @@ export function MenuOption({ id, icon, label, selected, onClick }) {
     .px(8)
     .gap(9)
     .items_center()
-    .rounded(RADIUS.row)
     .cursor_pointer()
     .text_size(TEXT.menu)
     .role("menu_item_radio")

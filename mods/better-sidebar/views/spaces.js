@@ -453,7 +453,6 @@ export class Spaces {
       .id(`machine-add-${m ?? "local"}`)
       .flex_none()
       .px(4)
-      .rounded(4)
       .hover((s) => s.bg(t.hover).text_color(t.foreground))
       .on_click((_e, cx) => {
         cx.stop_propagation();

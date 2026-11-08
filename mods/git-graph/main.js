@@ -2,9 +2,9 @@
 // Read only. graph/model.js builds the lanes, graph/reads.js runs Git, views/ draws.
 import { View, div } from "gpui-kit";
 import { v_flex, Scrollbar, v_virtual_list } from "gpui-base";
-import { exec, spaces, panes, focused, layout, watchFolder, shared, setShared, run, appHome, readTextFile } from "herdr";
-import { READ_ONLY, PAGE_SIZE, readRoot, readGitDirs, readGraph, joinPages, refsChanged, readCommitDetail } from "./graph/reads.js";
-import { flatten, diffEntry } from "./graph/detail.js";
+import { exec, spaces, panes, focused, layout, watchFolder, shared, appHome, readTextFile, openOverlay } from "herdr";
+import { READ_ONLY, PAGE_SIZE, readRoot, readGitDirs, readGraph, joinPages, refsChanged, readCommitDetail, readRepoName } from "./graph/reads.js";
+import { flatten } from "./graph/detail.js";
 import { pickLocation, modVisible } from "./graph/location.js";
 import { Panel, PanelHeader, IconButton, Message, Icon } from "./views/ui.js";
 import { commitRow } from "./views/graph-row.js";
@@ -14,8 +14,7 @@ const CONTEXT_POLL_MS = 300; // in-memory comparison only, runs no Git
 const REMOTE_POLL_MS = 10000; // a remote repository can't be watched
 const LOAD_AHEAD = 8; // rows from the end of the list that trigger the next page
 const SCOPE_KEY = "scope";
-const TAB_OPEN_TIMEOUT_MS = 1500; // as Better Changes: rapid clicks must not open two tabs
-const CHAR_WIDTH = 7; // px per character of the wrapped message, a generous estimate
+const CHAR_WIDTH = 7.5; // px per character of the wrapped message: a 12px monospace cell is 7.2
 const GUTTER = 70; // lanes and padding left of the message
 const EMPTY = { rows: [], laneCount: 0, state: null, done: false };
 
@@ -52,6 +51,7 @@ export default class GitGraph extends View {
     this.again = false; // a reload was asked for while one ran
     this.loaded = false;
     this.root = null;
+    this.repoName = null;
     this.watchId = 0;
     this.watching = null;
     this.expanded = null; // hash of the one expanded commit
@@ -60,10 +60,10 @@ export default class GitGraph extends View {
     this.selectedFile = null; // { hash, index }
     this.items = new Map();
     this.width = 320;
-    this.hasDiffTab = false; // Better Changes installed
+    this.hasReview = false;
     cx.spawn(async () => {
       try {
-        this.hasDiffTab = (await readTextFile(`${appHome()}/mods/better-changes/mod.json`)) !== null;
+        this.hasReview = (await readTextFile(`${appHome()}/mods/diff-review/mod.json`)) !== null;
       } catch {}
     });
     this.visible = onScreen();
@@ -104,6 +104,7 @@ export default class GitGraph extends View {
       this.error = null;
       this.loaded = false;
       this.root = null;
+      this.repoName = null;
       this.moreError = null;
       // Loops watching the old repository end at their next event.
       this.watchId++;
@@ -116,12 +117,15 @@ export default class GitGraph extends View {
       const root = await readRoot(git);
       if (!root) {
         this.root = null;
+        this.repoName = null;
         this.error = "Not a Git repository";
         this.graph = EMPTY;
         return;
       }
       this.root = root;
       const rootGit = (args) => git(args, root);
+      // The name only changes with the root, and a context change resets it.
+      this.repoName ??= await readRepoName(rootGit, root);
       this.watch(taskCx, rootGit, location.on);
       this.graph = await readGraph(rootGit, {
         count: Math.max(PAGE_SIZE, this.graph.rows.length),
@@ -171,43 +175,19 @@ export default class GitGraph extends View {
     });
   }
 
-  // Writes what Better Changes' own pick writes for a commit file, then shows its diff tab.
   openDiff(hash, index, cx) {
     const file = this.detail?.hash === hash ? this.detail.files?.[index] : null;
-    const row = this.graph.rows.find((r) => r.commit.hash === hash);
     this.selectedFile = { hash, index };
     cx.notify();
-    if (!file || !row || !this.root || !this.hasDiffTab) return;
-    const space = spaces().find((s) => s.active);
-    if (!space) return;
-    const entries = shared("better-changes.diff-tabs") ?? {};
-    const ids = new Set((space.tabs ?? []).map((t) => t.id));
-    const tab = panes().find((p) => p.mod === "better-changes" && ids.has(p.tab))?.tab;
-    const old = entries[space.id];
-    const { source, selection, pending } = diffEntry({
-      root: this.root,
-      on: JSON.parse(this.context).on,
-      commit: { hash, short: hash.slice(0, 7), subject: row.commit.subject },
-      file,
-      old,
-      hasTab: Boolean(tab),
-      now: Date.now(),
+    if (!file || !this.root || !this.hasReview) return;
+    openOverlay({
+      mod: "diff-review",
+      kind: "dialog",
+      width: 0.88,
+      height: 0.86,
+      frame: "none",
+      props: { kind: "commit", root: this.root, on: JSON.parse(this.context).on, hash, path: file.path },
     });
-    // Published before the tab opens so its copy sees the latest pick.
-    setShared("better-changes.selection", selection);
-    setShared("better-changes.diff-tabs", { ...entries, [space.id]: { source, selection, pending } });
-    const name = file.path.split("/").pop();
-    if (tab) {
-      run("tab.rename", { id: tab, name });
-      run("tab.select", { id: tab });
-    } else if (!old?.pending || Date.now() - old.pending > TAB_OPEN_TIMEOUT_MS) {
-      run("tab.new", {
-        space: space.id,
-        name,
-        mod: "better-changes",
-        props: { mode: "diff", space: space.id, source, selection },
-      });
-    }
   }
 
   onItem(key, cx) {
@@ -302,7 +282,7 @@ export default class GitGraph extends View {
     const all = this.scope === "all";
     return PanelHeader()
       .child(Icon("git-branch", 15))
-      .child(div().flex_1().font_semibold().child("Git Graph"))
+      .child(div().flex_1().min_w(0).truncate().font_semibold().child(this.repoName ?? "Git Graph"))
       .child(
         IconButton({
           id: "git-graph-scope",

@@ -284,7 +284,7 @@ export const sidebarMethods = {
           .min_w(0)
           .gap(6)
           .items_center()
-          .child(div().max_w(190).flex_none().truncate().child(name))
+          .child(div().max_w(190).flex_shrink_1().min_w(0).truncate().child(name))
           .child(
             div()
               .flex_1()
@@ -402,7 +402,6 @@ export const sidebarMethods = {
       .py(6)
       .gap(8)
       .items_center()
-      .rounded(7)
       .cursor_pointer()
       .hover((s) => s.bg(t.hover))
       .on_click((_e, cx) => this.openCommit(commit, cx))

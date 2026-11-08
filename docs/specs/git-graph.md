@@ -10,7 +10,7 @@ The tab bar also uses text that the person does not want. The panel buttons say 
 
 ## Solution
 
-1. A new mod, **Git Graph**, is the third child of the right panel stack, beside Files and Changes. It draws the commit history of the focused terminal's repository as coloured lanes. Each commit row shows a node, the subject, branch and tag labels, the author and the age. The checked-out branch and HEAD are marked. Click a commit to expand it in place: the full message, a hash you can copy, the author, the date and the changed files. Click a file to open its diff in the Better Changes centre tab. The panel is read-only: it never checks out, merges, resets or fetches.
+1. A new mod, **Git Graph**, is the third child of the right panel stack, beside Files and Changes. It draws the commit history of the focused terminal's repository as coloured lanes. Each commit row shows a node, the subject, branch and tag labels, the author and the age. The checked-out branch and HEAD are marked. The header shows the name of the repository's remote (`origin` first, else the first remote), or the root folder's name when the repository has no remote. Click a commit to expand it in place: the full subject (not the body, which can be long), a hash you can copy, the author, the date and the changed files. Each changed file shows its Material file icon and a status letter, as in the Files and Changes panels. Click a file to open the Review dialog for the whole Commit, on that file (see `docs/specs/diff-review.md`). The panel is read-only: it never checks out, merges, resets or fetches.
 2. A personal clone of Herdr's `tabs` mod, named `my-tabs`, replaces `tabs` in `better-main`. The clone shows the panel buttons (Files, Changes and Git Graph) as icons only, and each button has a tooltip. Terminal tabs show only the program icon, with the tab's name in a tooltip.
 3. Better Changes changes its header pills (Changes and Commits) to icons with tooltips. The count badges stay.
 
@@ -39,11 +39,11 @@ flowchart LR
     graph -->|"click commit"| expanded["Commit expanded in place"]:::new
     expanded -->|"click commit again"| graph
     expanded -->|"copy icon"| clip["Hash on clipboard"]:::new
-    expanded -->|"click file"| diff["Centre tab · Better Changes diff"]
+    expanded -->|"click file"| diff["Review dialog · Commit"]
     classDef new stroke-width:3px,stroke-dasharray:4 2
 ```
 
-The file click writes the Better Changes selection in its `commit` scope, so the diff tab is the one Better Changes already owns per space. Git Graph opens no tab of its own.
+The file click opens the Review dialog with `openOverlay`; Git Graph opens no tab of its own.
 
 ## User Stories
 
@@ -64,9 +64,9 @@ The file click writes the Better Changes selection in its `commit` scope, so the
 15. As a developer, I want the first 300 commits to load at once, and the next 300 each time I scroll to the end, so that large repositories stay fast.
 16. As a developer, I want the graph to reload when refs change (a commit, a checkout or a fetch in any terminal), so that it is never out of date.
 17. As a developer, I want a refresh button, so that I can force a reload.
-18. As a developer, I want to click a commit and see its full message, author, date and changed files in place, so that I keep my position in the graph.
+18. As a developer, I want to click a commit and see its full subject, author, date and changed files in place, so that I keep my position in the graph.
 19. As a developer, I want to copy a commit's full hash with one click, so that I can paste it into a terminal or an agent prompt.
-20. As a developer, I want to click a changed file and see its diff in the Better Changes centre tab, so that diffs open where I already read them.
+20. As a developer, I want to click a changed file and see the Commit's diff in the Review dialog, so that I read the change without leaving the graph.
 21. As a developer, I want a second click on an expanded commit to collapse it, so that the graph stays clean.
 22. As a developer, I want the panel to say "Not a Git repository" when the focused folder is not in a repository, so that I know why it is empty.
 23. As a developer, I want an empty repository (no commits) to show a clear message, so that the panel never looks broken.
@@ -92,7 +92,7 @@ The file click writes the Better Changes selection in its `commit` scope, so the
   - A **view** part. It is one `v_virtual_list` of fixed-height rows. The graph column is drawn from small absolutely-positioned `div`s for lines and nodes, because a mod can't draw paths. Curves are drawn as short diagonal steps inside a row. If those steps look poor, the curves fall back to right-angle joins. An expanded commit adds rows under its row, inside the same list.
 - **Repository following** copies Better Changes: a timer every 300ms checks the focused terminal's `cwd` and machine, then `git rev-parse --show-toplevel`. Local repositories use `watchFolder` on the `.git` folder to catch ref changes. Remote repositories poll every 10 seconds.
 - **Look** reuses the Better Changes design kit values (a 42px header, 28px rows, radius 10, theme tokens). The lane colours cycle through the theme's `ansi` colours. The mod keeps its own copy of the few kit pieces it needs. A mod can't import from another mod's folder.
-- **Interface with Better Changes:** to open a file's diff, Git Graph writes `shared("better-changes.diff-tabs")[space]` and `shared("better-changes.selection")` in the shape that Better Changes' own `pick` writes for scope `commit`. That shape is `source = { cwd: <repository root>, on }` and `context = JSON.stringify(source)`, and the selection carries `commit { hash, short, subject }` and `file { path, add, del, binary, status }`. Then Git Graph renames and selects the diff tab, or opens one with `tab.new` and `mod: "better-changes"`. Git Graph depends on this shape. If Better Changes is not installed, a file click does nothing beyond highlighting the file.
+- **Interface with the Review dialog:** a file click calls `openOverlay({ mod: "diff-review", kind: "dialog", props: { kind: "commit", root, on, hash, path } })` and records the selected file so the row stays highlighted. If the `diff-review` mod is not installed, a file click does nothing beyond highlighting the file.
 - **Preferences** (the branch toggle) are kept in the mod's `localStorage`.
 - **`my-tabs`** is made with `mod.clone {name: "tabs", as: "my-tabs"}`, and the `tabs` block of `better-main` points at it. Changes:
   - The panel buttons become 26px squares with only an icon and `.tooltip(label)`. A third button, `git-graph`, uses an icon from the `git-graph` mod. The list of enabled panels always includes `git-graph`, as well as whatever `shared("workspace.panels")` holds.

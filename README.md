@@ -23,7 +23,7 @@ Only the files I own are tracked (see `.gitignore`). Herdr writes and rewrites e
 | `mods/my-tabs/` | The tab bar: flat text tabs underlined in the accent color, and the side panel toggles. |
 | `mods/my-files/` | The Files panel, with Material file icons. |
 | `mods/better-changes/` | The Changes panel (read-only git status, diffs, commits), with Material file icons. |
-| `mods/git-graph/` | The Git Graph panel. |
+| `mods/git-graph/` | The Git Graph panel, with Material file icons. |
 | `docs/` | Specs and plans for larger changes. |
 
 ## Network and programs

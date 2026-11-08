@@ -7,7 +7,6 @@ import { theme, settings } from "herdr";
 
 // Plain px: Herdr scales a mod's sizes by zoom itself.
 export const TEXT = { badge: 10, caption: 11, small: 12, menu: 12.8, body: 13 };
-const RADIUS = { small: 4, control: 6, row: 7, button: 8 };
 export const SIZE = {
   button: 32,
   header: 42,
@@ -92,7 +91,6 @@ function Badge(text) {
     .flex_none()
     .px(5)
     .py(1)
-    .rounded(RADIUS.small)
     .border_1()
     .border_color(t.border)
     .text_size(TEXT.badge)
@@ -143,7 +141,6 @@ export function IconButton({
     .flex()
     .items_center()
     .justify_center()
-    .rounded(small ? RADIUS.small : RADIUS.control)
     .text_color(t.dim)
     .accessibility_label(label)
     .tooltip(label)
@@ -167,7 +164,6 @@ export function TextButton({ id, icon, label, onClick, active = false }) {
     .px(5)
     .gap(4)
     .items_center()
-    .rounded(RADIUS.small)
     .text_size(TEXT.caption)
     .text_color(active ? t.foreground : t.dim)
     .when(active, (el) => el.bg(t.selected))
@@ -255,7 +251,6 @@ export function Row({ id, depth = 0, selected = false, stem = false, onClick }) 
     .pr(ROW_PADDING)
     .gap(ROW_GAP)
     .items_center()
-    .rounded(RADIUS.row)
     .cursor_pointer()
     .when(selected, (el) => el.bg(t.selected))
     .hover((s) => s.bg(t.hover))
@@ -275,7 +270,7 @@ export function DiffStat({ add, del }) {
 
 export function StatusLetter(status) {
   const t = theme();
-  const color = status === "A" ? t.ansi2 : status === "D" || status === "U" ? t.ansi1 : t.blocked;
+  const color = status === "A" ? t.ansi2 : status === "D" ? t.ansi1 : t.ansi3;
   return div()
     .w(12)
     .flex_none()
@@ -305,7 +300,6 @@ export function TextBox({ id, state, focused, label, height = 84 }) {
     .h(height)
     .px(10)
     .py(7)
-    .rounded(RADIUS.button)
     .border_1()
     .border_color(focused ? t.accent : t.border)
     .text_size(TEXT.small)
@@ -334,7 +328,6 @@ export function SplitButton({ id, icon, label, enabled, primary = true, onClick,
         .gap(7)
         .items_center()
         .justify_center()
-        .rounded_l(RADIUS.button)
         .bg(solid ? t.solid : t.raised)
         .text_color(solid ? t.solid_foreground : enabled ? t.foreground : t.dim)
         .accessibility_label(label)
@@ -360,7 +353,6 @@ export function SplitTrigger({ id, label }) {
     .flex()
     .items_center()
     .justify_center()
-    .rounded_r(RADIUS.button)
     .bg(t.raised)
     .text_color(t.foreground)
     .cursor_pointer()
@@ -387,7 +379,6 @@ export function Menu({
     .w(width)
     .p(5)
     .gap(1)
-    .rounded(RADIUS.row)
     .border_1()
     .border_color(t.border)
     .bg(t.popover)
@@ -434,7 +425,6 @@ export function MenuOption({ id, icon, label, selected, onClick }) {
     .px(8)
     .gap(9)
     .items_center()
-    .rounded(RADIUS.row)
     .cursor_pointer()
     .text_size(TEXT.menu)
     .role("menu_item_radio")

@@ -3,6 +3,7 @@
 !/.gitignore
 !/docs/
 !/README.md
+!/GLOSSARY.md
 !/keys.json
 !/settings.json
 !/programs.json
@@ -16,6 +17,7 @@
 /mods/*
 !/mods/better-changes/
 !/mods/better-sidebar/
+!/mods/diff-review/
 !/mods/git-graph/
 !/mods/my-files/
 !/mods/my-tabs/
