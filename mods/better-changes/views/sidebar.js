@@ -5,15 +5,12 @@ import { theme, shared, setShared } from "herdr";
 import { fileTree, timeAgo } from "../git/model.js";
 import {
   TEXT,
-  SPIN_MS,
   codeFont,
-  Icon,
   Chevron,
   Panel,
   PanelHeader,
   HeaderTab,
   IconButton,
-  TextButton,
   GroupHeader,
   Row,
   DiffStat,
@@ -23,10 +20,8 @@ import {
   MenuLabel,
   MenuDivider,
   MenuOption,
-  TextBox,
-  SplitButton,
-  SplitTrigger,
 } from "./ui.js";
+import { KindIcon } from "./kind-icon.js";
 
 const VIEWS = [
   { id: "flat", label: "Flat", icon: "flat" },
@@ -88,7 +83,8 @@ export const sidebarMethods = {
         h_flex()
           .flex_1()
           .min_w(0)
-          .ml(-8) // Lines the pills up with the list rows below.
+          .h_full()
+          .ml(-8) // Lines the tabs up with the list rows below.
           .gap(4)
           .items_center()
           .role("tab_list")
@@ -113,35 +109,13 @@ export const sidebarMethods = {
             }),
           ),
       )
-      .child(
-        IconButton({
-          id: "refresh",
-          icon: "refresh",
-          label: "Refresh",
-          spinning: this.refreshSpinning,
-          onClick: (cx) => this.refreshAll(cx),
-        }),
-      )
       .child(this.renderMore());
   },
 
+  // The `better-changes.refresh` key command.
   refreshAll(cx) {
     this.refresh(cx);
     if (this.tab === "commit") this.loadCommits(cx);
-    if (this.refreshSpinning) return;
-    this.refreshSpinning = true;
-    cx.notify();
-    cx.timer.after(SPIN_MS, (cx) => this.stopSpinningWhenRead(cx));
-  },
-
-  // Git usually answers at once, so the icon always makes a full turn to be seen.
-  stopSpinningWhenRead(cx) {
-    if (this.loading || this.commitsLoading) {
-      cx.timer.after(SPIN_MS, (cx) => this.stopSpinningWhenRead(cx));
-      return;
-    }
-    this.refreshSpinning = false;
-    cx.notify();
   },
 
   renderMore() {
@@ -205,120 +179,30 @@ export const sidebarMethods = {
     const limit = this.settings.limits.files;
     if (this.total > limit)
       list.child(Message(`Showing the first ${limit.toLocaleString()} changed files.`));
-    return v_flex().id("changes").flex_1().min_h(0).child(list).child(this.renderCommitBox());
+    return v_flex()
+      .id("changes")
+      .flex_1()
+      .min_h(0)
+      .child(list)
+      .when(Boolean(this.note), (el) => el.child(this.renderNote()));
   },
 
-  renderCommitBox() {
-    const t = theme();
-    const hint = this.commitBoxHint();
-    return v_flex()
-      .id("commit-box")
+  renderNote() {
+    return div()
+      .id("changes-note")
       .flex_none()
       .p(10)
-      .gap(8)
       .border_t(1)
-      .border_color(t.border)
-      .when(Boolean(this.note), (el) =>
-        el.child(
-          div()
-            .text_size(TEXT.small)
-            .text_color(t.ansi1)
-            .whitespace_normal()
-            .child(this.note ?? ""),
-        ),
-      )
-      .child(
-        TextBox({
-          id: "commit-message",
-          state: this.input,
-          focused: this.typing,
-          label: "Commit message",
-        }),
-      )
-      .child(this.renderCommitButton())
-      .when(Boolean(hint), (el) =>
-        el.child(
-          div()
-            .text_size(TEXT.caption)
-            .text_color(this.commitMode === "amend" ? t.working : t.dim)
-            .whitespace_normal()
-            .child(hint ?? ""),
-        ),
-      );
-  },
-
-  commitBoxHint() {
-    if (this.amendLoading) return "Loading the latest commit…";
-    if (this.conflicts) return "Resolve conflicts and stage the files before committing.";
-    if (this.commitMode === "amend") {
-      return "Amend rewrites the latest commit. Unstaged changes stay untouched.";
-    }
-    return null;
-  },
-
-  commitButtonLabel() {
-    if (this.operation === "commit") return "Committing…";
-    if (this.operation === "amend") return "Amending…";
-    return this.commitMode === "amend" ? "Amend" : "Commit";
-  },
-
-  renderCommitButton() {
-    const amend = this.commitMode === "amend";
-    return SplitButton({
-      id: "commit",
-      icon: amend ? "amend" : "commit",
-      label: this.commitButtonLabel(),
-      enabled: this.canCommit(),
-      primary: !amend,
-      onClick: (cx) => this.commit(cx),
-      menu: this.renderCommitMenu(),
-    });
-  },
-
-  renderCommitMenu() {
-    const amend = this.commitMode === "amend";
-    const choose = (mode) => (cx) => this.setCommitMode(mode, cx);
-    const options = [
-      MenuOption({
-        id: "mode-commit",
-        icon: "commit",
-        label: "Commit",
-        selected: !amend,
-        onClick: choose("commit"),
-      }),
-    ];
-    if (this.hasHead) {
-      options.push(
-        MenuOption({
-          id: "mode-amend",
-          icon: "amend",
-          label: "Amend",
-          selected: amend,
-          onClick: choose("amend"),
-        }),
-      );
-    }
-    return Menu({
-      id: "commit-menu",
-      open: this.commitMenuOpen,
-      focus: this.commitMenuFocus,
-      anchor: "bottom_right",
-      onOpenChange: (open, cx) => {
-        this.commitMenuOpen = open;
-        cx.notify();
-      },
-      trigger: SplitTrigger({ id: "commit-options", label: "Commit options" }),
-      children: options,
-    });
+      .border_color(theme().border)
+      .text_size(TEXT.small)
+      .text_color(theme().ansi1)
+      .whitespace_normal()
+      .child(this.note ?? "");
   },
 
   addGroup(list, scope, label, files, detail, count = files.length) {
     if (!files.length) return;
     const collapsed = this.collapsed.has(scope);
-    const bulk = {
-      unstaged: { action: "stage", icon: "plus", label: "Stage all" },
-      staged: { action: "unstage", icon: "minus", label: "Unstage all" },
-    }[scope];
     list.child(
       GroupHeader({
         id: `group-${scope}`,
@@ -328,14 +212,6 @@ export const sidebarMethods = {
         danger: scope === "conflict",
         collapsed,
         divided: this.groupsDrawn++ > 0,
-        action:
-          bulk &&
-          TextButton({
-            id: `${bulk.action}-all`,
-            icon: bulk.icon,
-            label: bulk.label,
-            onClick: (cx) => this.indexAction(bulk.action, null, cx),
-          }),
         onClick: (cx) => this.toggleGroup(scope, cx),
       }),
     );
@@ -376,6 +252,7 @@ export const sidebarMethods = {
       },
     })
       .child(Chevron(!closed))
+      .child(KindIcon(row.name, true, !closed))
       .child(div().flex_1().min_w(0).truncate().child(row.name));
   },
 
@@ -398,7 +275,7 @@ export const sidebarMethods = {
       depth,
       selected: open?.path === file.path && open?.scope === scope,
       onClick: (cx) => this.pick(file, scope, cx),
-    }).child(Icon("file", 14).text_color(t.muted));
+    }).child(KindIcon(name, false));
     if (tree) row.child(div().flex_1().min_w(0).truncate().child(name));
     else
       row.child(
@@ -423,26 +300,6 @@ export const sidebarMethods = {
         div().flex_none().text_size(TEXT.caption).text_color(t.ansi1).child(file.conflictKind),
       );
     else row.child(DiffStat(stats)).child(StatusLetter(status));
-    if (scope === "unstaged")
-      row.child(
-        IconButton({
-          id: `stage-${file.path}`,
-          icon: "plus",
-          label: "Stage",
-          small: true,
-          onClick: (cx) => this.indexAction("stage", file.path, cx),
-        }),
-      );
-    if (scope === "staged")
-      row.child(
-        IconButton({
-          id: `unstage-${file.path}`,
-          icon: "minus",
-          label: "Unstage",
-          small: true,
-          onClick: (cx) => this.indexAction("unstage", file.path, cx),
-        }),
-      );
     return row;
   },
 

@@ -17,9 +17,10 @@ import {
   setAgentOrder,
   window,
   layout,
-  hc,
+  exec,
 } from "herdr";
 import { findNode } from "./find-node.js";
+import { META_SCRIPT, parseMeta, recordRows } from "./claude-subagents.js";
 import { TEXT, Icon, IconButton, GroupHeader, Menu, MenuLabel, MenuOption } from "./ui.js";
 
 // The sidebar's rail goes by its width, not a flag: dragging its edge narrows it too.
@@ -37,6 +38,7 @@ function toggleSidebar() {
   });
 }
 
+const STATUS_LABELS = { working: "Working", blocked: "Needs you", done: "Done", idle: "Idle" };
 const clean = (s) => (s ?? "").replace(/^[^\p{L}\p{N}]+/u, "").trim();
 
 function lead(tab, all = panes()) {
@@ -105,28 +107,6 @@ function grouping(sort, tabName) {
   return null;
 }
 
-const CONTEXT_POLL_MS = 10000;
-// Claude Code's built-in status line ends its usage row with "129k/1M  5h ▬▬".
-// Anchoring on the 5h rate-limit bar keeps "a/b" text in the conversation from matching.
-const CONTEXT_LINE = /(\d+(?:\.\d+)?[kM]?)\/(\d+(?:\.\d+)?[kM])\s+5h\b/;
-const TOKEN_UNITS = { k: 1e3, M: 1e6 };
-
-const isClaude = (a) => a.app === "claude-code" || a.program?.key === "claude";
-
-const tokens = (text) => parseFloat(text) * (TOKEN_UNITS[text.at(-1)] ?? 1);
-
-// The context window use from the last status line on screen, or null.
-export function parseContext(screen) {
-  for (const line of (screen ?? "").split("\n").reverse()) {
-    const match = CONTEXT_LINE.exec(line);
-    if (!match) continue;
-    const [, used, total] = match;
-    return { label: used.toUpperCase(), ratio: tokens(used) / tokens(total) };
-  }
-  return null;
-}
-
-
 // The agent's icon from the app's program table: a one-color glyph or a picture.
 function icon(p, size, color) {
   if (!p?.icon) return null;
@@ -165,46 +145,39 @@ export class Agents {
     // Each agent's last state and when it changed (ms), kept across restarts.
     this.changed = JSON.parse(localStorage.getItem("changed") ?? "{}");
     this.pins = JSON.parse(localStorage.getItem("pins") ?? "[]");
-    this.context = {};
     cx.timer.every(30000, (cx) => cx.notify());
-    this.refreshContext(cx);
-    cx.timer.every(CONTEXT_POLL_MS, (cx) => this.refreshContext(cx));
-  }
-
-  // Herdr doesn't expose context use, so read it off each Claude Code screen.
-  refreshContext(cx) {
-    if (this.contextBusy) return;
-    this.contextBusy = true;
+    this.records = new Map();
+    this.meta = {};
     cx.spawn(async (cx) => {
-      try {
-        const next = {};
-        for (const a of agents().filter(isClaude)) {
-          try {
-            const r = await hc(["read", a.address]);
-            const context = r.code === 0 ? parseContext(r.stdout) : null;
-            if (context) next[a.address] = context;
-          } catch {
-            // The terminal ended or its machine is away: show nothing for it.
-          }
-        }
-        if (JSON.stringify(next) === JSON.stringify(this.context)) return;
-        this.context = next;
-        cx.notify();
-      } finally {
-        this.contextBusy = false;
+      for (;;) {
+        const changed = await this.pollRecords().catch(() => false);
+        if (changed) cx.notify();
+        await cx.sleep(1000);
       }
     });
   }
 
-  contextBadge(a, t) {
-    const context = this.context[a.address];
-    if (!context) return null;
-    const color = context.ratio >= 0.75 ? t.ansi1 : context.ratio >= 0.4 ? t.ansi3 : t.dim;
-    return div()
-      .flex_none()
-      .text_size(TEXT.caption)
-      .text_color(color)
-      .child(context.label);
+  async pollRecords() {
+    const next = new Map();
+    for (const t of terminals()) {
+      const ids = Object.keys(t.records ?? {});
+      if (!ids.length) continue;
+      if (ids.some((id) => !(id in this.meta))) await this.loadMeta(t, ids);
+      next.set(t.address, recordRows(t, this.meta));
+    }
+    const before = JSON.stringify([...this.records]);
+    this.records = next;
+    return JSON.stringify([...next]) !== before;
+  }
+
+  // Read once per new id: null marks it asked, so a missing meta.json isn't retried.
+  async loadMeta(t, ids) {
+    for (const id of ids) this.meta[id] ??= null;
+    const pid = t.foreground?.pid;
+    if (!pid) return;
+    const on = t.address.includes("/") ? t.address.split("/")[0] : null;
+    const r = await exec("sh", ["-c", META_SCRIPT, "sh", String(pid)], { on });
+    Object.assign(this.meta, parseMeta(r.stdout));
   }
 
   // Stamps agents whose state changed. Done and idle count as one: looking at a
@@ -306,9 +279,11 @@ export class Agents {
     run("terminal.peek", { terminal: addr });
   }
 
-  // Live sub-agents of `addr`, depth first, each with the tree lines in front of it.
+  // Live sub-agents of `addr` (hc run terminals and Claude Code subagent records),
+  // depth first, each with the tree lines in front of it.
   tree(all, addr, lead = []) {
-    const kids = all.filter((k) => k.parent === addr && k.state === "live");
+    const records = (this.records?.get(addr.split("#")[0]) ?? []).filter((r) => r.parent === addr);
+    const kids = [...all.filter((k) => k.parent === addr && k.state === "live"), ...records];
     return kids.flatMap((k, i) => {
       const last = i === kids.length - 1;
       return [
@@ -327,7 +302,6 @@ export class Agents {
       .id(`sub-${k.address}`)
       .pl(39)
       .pr(8)
-      .rounded(8)
       .h(26)
       .flex_none()
       .gap(0)
@@ -335,7 +309,8 @@ export class Agents {
       .text_size(12.5)
       .when(on, (el) => el.bg(t.raised))
       .hover((s) => s.bg(t.hover))
-      .on_click(() => this.peek(k.address))
+      // A subagent record has no terminal of its own: show the agent running it.
+      .on_click(() => (k.record ? run("pane.focus", { terminal: k.address.split("#")[0] }) : this.peek(k.address)))
       .children(
         s.lines.map((l) =>
           div()
@@ -363,13 +338,13 @@ export class Agents {
   // compact: a ! for blocked where a header already says "Needs you".
   status(t, a, compact = false) {
     const color = t[a.status] ?? t.dim;
+    if (!compact) return this.statusPill(t, a.status);
     if (a.status === "working")
       return Icon("spinner").size(12).mx(1).flex_none().text_color(t.working).spin(900);
     if (a.status === "blocked" && compact)
       return div()
         .size(14)
         .flex_none()
-        .rounded(4)
         .bg(t.blocked + "26")
         .text_size(TEXT.avatar)
         .font_bold()
@@ -378,34 +353,38 @@ export class Agents {
         .items_center()
         .justify_center()
         .child("!");
-    if (a.status === "blocked")
-      return div()
-        .flex_none()
-        .px(6)
-        .h(18)
-        .rounded(5)
-        .bg(t.blocked + "26")
-        .text_size(TEXT.avatar)
-        .font_semibold()
-        .text_color(t.blocked)
-        .flex()
-        .items_center()
-        .child("Needs you");
     // Idle: a ring; done: a dot.
     if (a.status === "idle")
       return div()
         .size(7)
         .mx(3)
         .flex_none()
-        .rounded(4)
         .border(1.5)
         .border_color(t.idle ?? t.dim);
     return div()
       .size(7)
       .mx(3)
       .flex_none()
-      .rounded(4)
       .bg(a.status === "done" ? color : t.dim + "00");
+  }
+
+  // A labelled status, so a row says what the agent needs without decoding a dot.
+  statusPill(t, status) {
+    const label = STATUS_LABELS[status] ?? status ?? "Unknown";
+    const color = t[status] ?? t.dim;
+    const quiet = status === "idle" || !STATUS_LABELS[status];
+    return h_flex()
+      .flex_none()
+      .gap(4)
+      .px(6)
+      .h(18)
+      .items_center()
+      .when(!quiet, (el) => el.bg(color + "26"))
+      .text_size(TEXT.avatar)
+      .font_semibold()
+      .text_color(quiet ? t.dim : color)
+      .when(status === "working", (el) => el.child(Icon("spinner").size(10).flex_none().spin(900)))
+      .child(label);
   }
 
   // opts, from the lists view: `view` already read, `heading: false` under its tabs.
@@ -431,7 +410,6 @@ export class Agents {
           .id("ag-list")
           .flex_1()
           .min_h(0)
-          .px(view.collapsed ? 0 : 8)
           .overflow_y_scrollbar()
           .mode("always")
           .children(rows),
@@ -618,7 +596,6 @@ export class Agents {
   agentRow(a, subs, view, t) {
     const pic = icon(a.program, 16, t.foreground);
     const hovered = this.hovered === a.address;
-    const context = this.contextBadge(a, t);
     // An agent on another machine (`vps/t7`) says which.
     const machine = a.address.includes("/") ? a.address.split("/")[0] : null;
     return h_flex()
@@ -626,10 +603,9 @@ export class Agents {
       .px(8)
       .h(30)
       .flex_none()
-      .rounded(8)
       .items_center()
       .gap(9)
-      .when(a.focused, (el) => el.bg(t.selected))
+      .when(a.focused && !view.nested, (el) => el.bg(t.selected))
       .cursor_pointer()
       .hover((s) => s.bg(t.hover))
       .on_hover((on, cx) => {
@@ -645,16 +621,15 @@ export class Agents {
       )
       .when(subs.length > 0, (el) => el.child(this.foldButton(a, subs, t)))
       .when(hovered, (el) => el.child(this.pinButton(a, t)))
-      .when(!hovered && Boolean(context), (el) => el.child(context))
-      .child(this.status(t, a, view.byPriority && !this.pins.includes(a.address)));
+      .child(this.status(t, a));
   }
 
   // A tab with no agent, under its space in the lists view: its program and its name.
-  tabRow(w, tab, lit, t) {
+  tabRow(w, tab, t) {
     const l = lead(tab);
-    // The tab's title, as Herdr's tab bar shows it.
-    const name = tab.name;
     const prog = l?.program?.name;
+    // An unnamed tab's title is only its position: show the program instead.
+    const name = tab.named ? tab.name : prog ?? "Terminal";
     // A mod's pane runs no program, but the mod may publish an icon, as Better Tabs reads it.
     const modIcon = shared("mod-icons")?.[panes().find((p) => p.tab === tab.id && p.mod)?.mod];
     const pic =
@@ -664,10 +639,8 @@ export class Agents {
       .px(8)
       .h(30)
       .flex_none()
-      .rounded(8)
       .items_center()
       .gap(9)
-      .when(lit, (el) => el.bg(t.selected))
       .cursor_pointer()
       .hover((s) => s.bg(t.hover))
       .on_click(() => {
@@ -681,7 +654,7 @@ export class Agents {
           .min_w(0)
           .gap(5)
           .items_center()
-          .child(div().min_w(0).truncate().text_color(lit ? t.foreground : t.muted).child(name))
+          .child(div().min_w(0).truncate().text_color(w.active ? t.foreground : t.muted).child(name))
           .when(Boolean(prog) && prog !== name, (el) => el.child(this.programName(prog, t))),
       );
   }
@@ -708,9 +681,11 @@ export class Agents {
   agentName(a, view, t) {
     const label = view.label(a);
     const namesSpace = !view.nested;
-    // A row is its tab's title, as Herdr's tab bar shows it; the icon says which agent.
-    const name = a.tab_name || label;
     const prog = a.program?.name;
+    // A row is its tab's title when someone named the tab; an unnamed tab's
+    // title is only its position, so the program names the row instead.
+    const named = spaces().find((s) => s.id === a.space)?.tabs.find((tab) => tab.id === a.tab)?.named;
+    const name = (named && a.tab_name) || prog || label;
     const idle = a.status === "idle" && !a.focused;
     return h_flex()
       .flex_1()
@@ -745,7 +720,6 @@ export class Agents {
       .gap(3)
       .flex()
       .items_center()
-      .rounded(4)
       .text_size(TEXT.caption)
       .text_color(open ? t.dim : (t[top] ?? t.dim))
       .cursor_pointer()

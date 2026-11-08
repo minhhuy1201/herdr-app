@@ -2,8 +2,13 @@
 /*
 !/.gitignore
 !/docs/
+!/README.md
 !/keys.json
 !/settings.json
+!/programs.json
+!/themes/
+/themes/*
+!/themes/github-dark.json
 !/layouts/
 /layouts/*
 !/layouts/better-main.json
@@ -12,6 +17,7 @@
 !/mods/better-changes/
 !/mods/better-sidebar/
 !/mods/git-graph/
+!/mods/my-files/
 !/mods/my-tabs/
 gpui-kit.d.ts
 herdr.d.ts

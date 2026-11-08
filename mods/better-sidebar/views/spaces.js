@@ -20,7 +20,9 @@ import { PRStatusObserver, prPlaceKey, prAppearance } from "../git/pr-status.js"
 import { spaceFolder, checkoutKey, readCheckout } from "../git/checkouts.js";
 import { loadSettings, duration } from "../settings.js";
 import { findNode } from "./find-node.js";
-import { TEXT, Icon, IconButton, Badge, Rail } from "./ui.js";
+import { TEXT, Icon, Badge, Rail } from "./ui.js";
+import { assign, nextSprite } from "./sprites.js";
+import { Sprite } from "./sprite-view.js";
 
 const USUAL_BRANCHES = new Set(["main", "master"]);
 const rowHeight = ({ tree }) => (tree ? 28 : 30);
@@ -341,7 +343,7 @@ export class Spaces {
   grouped(t, collapsed) {
     const rows = this.ordered();
     // `under`, set by the lists view, adds rows beneath a space: its agents.
-    const draw = (r) => (collapsed ? [this.compact(r, t)] : [this.row(r, t), ...(this.under?.(r) ?? [])]);
+    const draw = (r) => (collapsed ? [this.compact(r, t)] : [this.group(r, t)]);
     const remote = [
       ...new Set([
         ...rows.map((r) => r.w.machine).filter(Boolean),
@@ -393,7 +395,6 @@ export class Spaces {
       .px(8)
       .gap(7)
       .items_center()
-      .rounded(7)
       .text_size(TEXT.small)
       .text_color(t.dim)
       .hover((s) => s.bg(t.hover).text_color(t.foreground))
@@ -441,7 +442,6 @@ export class Spaces {
       .child(
         div()
           .size(6)
-          .rounded(3)
           .flex_none()
           .bg(connected ? t.ansi2 : t.dim),
       )
@@ -598,8 +598,6 @@ export class Spaces {
   row({ w, i, g, tree }, t) {
     const status = this.checkoutStatus(w);
     const hasPRLine = Boolean(status?.error);
-    // One row is lit: under the lists view, the focused agent beneath takes it.
-    const lit = w.active && !this.quiet?.(w);
     const row = v_flex()
       .relative()
       .id(`space-${w.id}`)
@@ -607,9 +605,7 @@ export class Spaces {
       .h(rowHeight({ tree }) + (hasPRLine ? 22 : 0))
       .flex_none()
       .justify_center()
-      .rounded(8)
-      .when(lit, (el) => el.bg(t.selected))
-      .when(!lit, (el) => el.hover((s) => s.bg(t.hover)))
+      .when(!w.active, (el) => el.hover((s) => s.bg(t.hover)))
       .when(this.pressed === i && this.over !== i, (el) => el.opacity(0.5))
       .on_mouse_down("right", () => this.menu(w))
       .child(this.rowTitle(w, g, tree, t))
@@ -620,6 +616,15 @@ export class Spaces {
     // Nested under the lists view, a worktree hangs from its main space's line.
     if (!(tree && this.under)) return dragged;
     return h_flex().child(Rail(tree.startsWith("└") ? "└" : "├", 14)).child(dragged.flex_1().min_w(0));
+  }
+
+  // A space with the rows beneath it. The active one is one flat block and its rows
+  // paint no selection of their own. `selected` is translucent: two layers give the
+  // contrast one layer lacks on `chrome`.
+  group(r, t) {
+    const rows = [this.row(r, t), ...(this.under?.(r) ?? [])];
+    if (!r.w.active) return v_flex().children(rows);
+    return v_flex().bg(t.selected).child(v_flex().bg(t.selected).children(rows));
   }
 
   // Where the dragged space would land.
@@ -674,20 +679,23 @@ export class Spaces {
       .child(this.gitTail(g, w.active, t, w));
   }
 
+  // Alt-click steps to the next sprite without selecting the space.
   avatar(w, t) {
     const color = (shared("space.colors") ?? {})[w.id] ?? "ansi6";
     const fill = color.startsWith("#") ? color : (AVATAR_COLORS[color] ?? t[color]);
+    const name = (shared("space.sprites") ?? {})[w.id];
     return h_flex()
+      .id(`space-sprite-${w.id}`)
       .size(18)
       .flex_none()
-      .rounded(5)
-      .bg(fill)
       .items_center()
       .justify_center()
-      .text_size(TEXT.avatar)
-      .font_bold()
-      .text_color("#ffffff")
-      .child([...w.name][0]?.toUpperCase() ?? "?");
+      .on_mouse_down("left", (e, cx) => {
+        if (!e.modifiers?.alt) return;
+        cx.stop_propagation();
+        setShared("space.sprites", { ...(shared("space.sprites") ?? {}), [w.id]: nextSprite(name) });
+      })
+      .child(Sprite(name, fill));
   }
 
   compact({ w, i }, t) {
@@ -713,6 +721,10 @@ export class Spaces {
   // Share avatar colors with Herdr's own space menus. Do this during data
   // synchronization, never render: setShared itself schedules a redraw.
   updateColors(sp) {
+    // `herdr-app check` runs with no spaces: keep everyone's colors and sprites.
+    if (!sp.length) return;
+    const sprites = assign(sp, shared("space.sprites"));
+    if (sprites.changed) setShared("space.sprites", sprites.out);
     const palette = ["ansi6", "ansi3", "ansi4", "ansi5", "ansi2", "ansi1"];
     const ids = new Set(sp.map((p) => p.id));
     const kept = Object.fromEntries(
@@ -752,17 +764,6 @@ export class Spaces {
     if (wasCollapsed !== this.width < 160) cx.notify();
   }
 
-  newSpaceButton() {
-    return IconButton({
-      id: "space-new",
-      icon: "plus",
-      label: "New space",
-      iconSize: 14,
-      muted: true,
-      onClick: () => run("space.new"),
-    });
-  }
-
   header(t, collapsed) {
     return h_flex()
       .h(31)
@@ -772,8 +773,7 @@ export class Spaces {
       .justify_between()
       .text_size(TEXT.label)
       .text_color(t.dim)
-      .when(!collapsed, (el) => el.child("Spaces"))
-      .child(this.newSpaceButton());
+      .when(!collapsed, (el) => el.child("Spaces"));
   }
 
   body(t, collapsed) {
@@ -781,7 +781,6 @@ export class Spaces {
       .id("spaces-list")
       .flex_1()
       .min_h(0)
-      .px(8)
       .pb(14)
       .overflow_y_scrollbar()
       .mode("always")

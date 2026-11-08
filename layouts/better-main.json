@@ -91,17 +91,17 @@
                 "tab": "active",
                 "pane": {
                   "background": "background",
+                  "radius": 0,
+                  "gap": 0,
+                  "lone": false,
                   "border": {
-                    "width": 1,
-                    "color": "border"
+                    "width": 0,
+                    "color": "background"
                   },
                   "focus": {
-                    "width": 1,
-                    "color": "accent"
-                  },
-                  "radius": 10,
-                  "gap": 8,
-                  "lone": true
+                    "width": 0,
+                    "color": "background"
+                  }
                 }
               }
             },
@@ -117,7 +117,7 @@
                       "id": "files",
                       "type": "block",
                       "content": {
-                        "mod": "files"
+                        "mod": "my-files"
                       }
                     },
                     {
@@ -146,8 +146,8 @@
               "hidden": true
             }
           ],
-          "padding": 8,
-          "gap": 8
+          "padding": 0,
+          "gap": 0
         },
         {
           "id": "status",
@@ -164,15 +164,11 @@
       "resizable": false
     }
   ],
-  "background": "canvas",
+  "background": "background",
   "terminal_padding": [
     14,
     12
   ],
-  "divider": {
-    "width": 1,
-    "color": "border"
-  },
   "titlebar": "none",
   "traffic_lights": [
     12,

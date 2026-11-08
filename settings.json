@@ -1,5 +1,5 @@
 {
-  "zoom": 0.9,
+  "zoom": 1.2,
   "sounds": {
     "enabled": false
   },
@@ -7,5 +7,6 @@
   "font_ligatures": false,
   "ui_font": "JetBrainsMono Nerd Font",
   "telemetry": false,
-  "minimum_contrast": 1.0
+  "minimum_contrast": 1.0,
+  "theme": "github-dark"
 }

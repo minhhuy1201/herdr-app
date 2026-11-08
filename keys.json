@@ -67,7 +67,10 @@
     "ctrl-shift-z": "pane.zoom",
     "ctrl-shift-l": "layout.switch",
     "f2": "tab.rename",
-    "shift-f2": "space.rename"
+    "shift-f2": "space.rename",
+    "ctrl-alt-1": "my-tabs.panel:files",
+    "ctrl-alt-2": "my-tabs.panel:changes",
+    "ctrl-alt-3": "my-tabs.panel:git-graph"
   },
   "terminal": {
     "ctrl-backspace": "send:\u0017",

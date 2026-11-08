@@ -7,12 +7,11 @@ import { theme, settings } from "herdr";
 
 // Plain px: Herdr scales a mod's sizes by zoom itself.
 export const TEXT = { badge: 10, caption: 11, small: 12, menu: 12.8, body: 13 };
-const RADIUS = { small: 4, control: 6, row: 7, button: 8, panel: 10 };
+const RADIUS = { small: 4, control: 6, row: 7, button: 8 };
 export const SIZE = {
   button: 32,
   header: 42,
   paneHeader: 30,
-  tab: 29,
   row: 28,
   group: 30,
   menu: 31,
@@ -60,10 +59,9 @@ export function Panel({ id, framed = true }) {
     .size_full()
     .min_h(0)
     .overflow_hidden()
-    .bg(t.background)
+    .bg(framed ? t.chrome : t.background)
     .text_color(t.foreground)
-    .text_size(TEXT.body)
-    .when(framed, (el) => el.rounded(RADIUS.panel).border_1().border_color(t.border));
+    .text_size(TEXT.body);
 }
 
 export function PanelHeader() {
@@ -73,9 +71,7 @@ export function PanelHeader() {
     .flex_none()
     .px(14)
     .gap(8)
-    .items_center()
-    .border_b(1)
-    .border_color(t.border);
+    .items_center();
 }
 
 // A row matching Herdr's pane header, for a layout that doesn't use ours.
@@ -87,8 +83,6 @@ export function PaneBar() {
     .px(10)
     .gap(8)
     .items_center()
-    .border_b(1)
-    .border_color(t.border)
     .text_size(TEXT.small);
 }
 
@@ -106,25 +100,22 @@ function Badge(text) {
     .child(String(text));
 }
 
-// A panel title that doubles as a tab, the same pill as Herdr's tab bar.
 // Icon-only: the label is the tooltip and the accessible name.
 export function HeaderTab({ id, icon, label, count, active, onClick }) {
   const t = theme();
   return h_flex()
     .id(id)
-    .h(SIZE.tab)
+    .h_full()
     .flex_none()
     .px(10)
     .gap(7)
     .items_center()
-    .rounded(RADIUS.row)
-    .border(1)
-    .border_color(active ? t.border : t.background)
-    .bg(active ? t.raised : t.background)
+    .border_b(2)
+    .border_color(active ? t.accent : t.chrome)
     .text_size(TEXT.menu)
     .text_color(active ? t.foreground : t.muted)
     .cursor_pointer()
-    .hover((s) => s.bg(t.hover))
+    .hover((s) => s.text_color(t.foreground))
     .role("tab")
     .aria_selected(Boolean(active))
     .accessibility_label(label)

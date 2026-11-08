@@ -20,7 +20,7 @@ export function Panel({ id }) {
     .size_full()
     .min_h(0)
     .overflow_hidden()
-    .bg(t.background)
+    .bg(t.chrome)
     .text_color(t.foreground)
     .text_size(TEXT.body);
 }
@@ -32,9 +32,7 @@ export function PanelHeader() {
     .flex_none()
     .px(14)
     .gap(8)
-    .items_center()
-    .border_b(1)
-    .border_color(t.border);
+    .items_center();
 }
 
 export function IconButton({ id, icon, label, onClick, spinning = false, active = false }) {

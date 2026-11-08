@@ -19,7 +19,6 @@ const READ_ONLY = [
   "-c",
   "diff.autoRefreshIndex=false",
 ];
-const BULK_PATHS = 200; // Per command, to stay under the system's argument limit.
 
 // The active terminal's folder, or the repository saved for our own diff tab,
 // since a mod pane has no terminal folder.
@@ -177,68 +176,6 @@ export const gitMethods = {
       }
     });
   },
-
-
-  // Never touches working files. Before the first commit there is no HEAD to
-  // reset to. Literal pathspecs keep names such as [a].txt from being patterns.
-  // With no path, it acts on the whole repository, including files past the list
-  // limit, but never on a conflict: staging one would mark it resolved with its
-  // markers still in, and unstaging would throw away Git's record of the conflict.
-  indexArgs(action, path) {
-    const literal = ["--literal-pathspecs"];
-    if (action === "stage") return [...literal, "add", "--", path];
-    if (this.hasHead) return [...literal, "reset", "-q", "HEAD", "--", path];
-    return [...literal, "rm", "--cached", "-r", "-f", "--", path];
-  },
-
-  // The commands for Stage all or Unstage all. Git's exclude pathspecs don't stop
-  // `add -A` from resolving a conflict, so during a merge they name each file.
-  bulkIndexCommands(action) {
-    const stage = action === "stage";
-    if (!this.conflicts) {
-      if (stage) return [["add", "-A"]];
-      if (this.hasHead) return [["--literal-pathspecs", "reset", "-q", "HEAD", "--", "."]];
-      return [["--literal-pathspecs", "rm", "--cached", "-r", "-f", "--", "."]];
-    }
-    const wanted = this.allFiles.filter((f) => !f.conflict && (stage ? f.unstaged : f.staged));
-    const commands = [];
-    for (let i = 0; i < wanted.length; i += BULK_PATHS) {
-      const paths = wanted.slice(i, i + BULK_PATHS).map((f) => f.path);
-      commands.push(
-        stage
-          ? ["--literal-pathspecs", "add", "--", ...paths]
-          : ["--literal-pathspecs", "reset", "-q", "HEAD", "--", ...paths],
-      );
-    }
-    return commands;
-  },
-
-  indexAction(action, path, cx) {
-    if (!this.root || this.busy || this.contextKey() !== this.context) return;
-    const commands = path ? [this.indexArgs(action, path)] : this.bulkIndexCommands(action);
-    const root = this.root;
-    const on = this.on;
-    this.busy = true;
-    this.note = null;
-    cx.notify();
-    cx.spawn(async (cx) => {
-      try {
-        for (const args of commands) {
-          const result = await this.git(args, root, on);
-          if (result.code !== 0) throw Error((result.stderr || result.stdout).trim());
-        }
-        this.reload = Date.now();
-        setShared("better-changes.reload", { root, on: on ?? null, at: this.reload });
-      } catch (error) {
-        this.note = `${action === "stage" ? "Stage" : "Unstage"} failed: ${error.message}`;
-      } finally {
-        this.busy = false;
-        this.refresh(cx);
-        cx.notify();
-      }
-    });
-  },
-
 
   resetCommits() {
     this.commits = [];
