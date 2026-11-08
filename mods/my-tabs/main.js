@@ -1,6 +1,6 @@
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { spaces, panes, run, openOverlay, theme, window, shared, layout, settings } from "herdr";
+import { spaces, panes, run, openOverlay, theme, window, shared, layout, settings, nextCommand } from "herdr";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -12,9 +12,24 @@ function find(node, id) {
 }
 
 export default class Tabs extends View {
-  init() {
+  init(_props, cx) {
     this.pressed = null;
     this.panels = JSON.parse(localStorage.getItem("panels") ?? "{}");
+    // keys.json: "my-tabs.panel:<id>" toggles that side panel like its tab bar button.
+    cx.spawn(async () => {
+      for (;;) {
+        const command = await nextCommand();
+        if (command.startsWith("panel:")) this.togglePanel(command.slice(6));
+      }
+    });
+  }
+
+  togglePanel(id) {
+    const root = layout(), panel = find(root, "panel"), body = find(root, "panel-body");
+    if (!find(body, id)) return;
+    if (panel && !panel.hidden && body?.active === id) return run("layout.hide", { id: "panel" });
+    run("layout.select", { stack: "panel-body", child: id });
+    run("layout.show", { id: "panel" });
   }
 
   // The side panel is remembered per space: switching shows that space's choice
@@ -56,9 +71,10 @@ export default class Tabs extends View {
       const program = panes().find(p => p.tab === c.id && p.program?.agent)?.program ?? panes().find(p => p.tab === c.id)?.program;
       const name = /^tb\d+$/.test(c.name) ? program?.name ?? "Terminal" : c.name;
       const label = c.zoomed ? `${name} Z` : name;
-      return h_flex().id(`tab-${c.id}`).h(29).px(9).gap(6).rounded(7).items_center().flex_none()
-        .border(1).border_color(c.active ? t.border : t.chrome).bg(c.active ? t.raised : t.chrome).text_color(c.active ? t.foreground : t.muted)
-        .hover(s => s.bg(t.hover)).tooltip(label).accessibility_label(label)
+      return h_flex().id(`tab-${c.id}`).h_full().px(10).gap(6).items_center().flex_none()
+        .border_b(2).border_color(c.active ? t.accent : t.chrome)
+        .text_color(c.active ? t.foreground : t.muted)
+        .hover(s => s.text_color(t.foreground)).tooltip(label).accessibility_label(label)
         .on_mouse_down("left", (e, cx) => { cx.stop_propagation(); this.pressed = i; if (e.click_count === 2) run("tab.rename", { id: c.id }); })
         .on_mouse_up("left", () => {
           const from = this.pressed; this.pressed = null;
@@ -68,7 +84,7 @@ export default class Tabs extends View {
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "menu", kind: "popup", width: 200, props: { tab: "tab", target: { id: c.id, space: space.id } } }); })
         .child(program?.icon && !program.tint ? image(program.icon).size(14) : svg(program?.icon ?? "mods/workspace-chrome/terminal.svg").size(14).text_color(t.muted))
         .when(c.status === "working", el => el.child(svg("mods/workspace-chrome/spinner.svg").size(12).flex_none().text_color(t.working).spin(900)))
-        .when(c.status === "blocked" || c.status === "done", el => el.child(div().size(6).rounded(3).bg(t[c.status])))
+        .when(c.status === "blocked" || c.status === "done", el => el.child(div().size(6).bg(t[c.status])))
         .when(c.active, el => el.child(div().id(`close-${c.id}`).text_color(t.dim).on_mouse_down("left", stop).on_click((_e, cx) => { cx.stop_propagation(); run("tab.close", { id: c.id }); }).child(svg("mods/pane/close.svg").size(12))));
     };
     const root = layout(), sidebar = find(root, "sidebar"), w = window();
@@ -82,19 +98,15 @@ export default class Tabs extends View {
     this.syncPanel(space, panel, body, enabled);
     const panelButton = (id, label, icon) => {
       const on = panel && !panel.hidden && body?.active === id;
-      return div().id(`panel-${id}`).size(26).flex_none().flex().items_center().justify_center().rounded(6)
-        .bg(on ? t.selected : t.chrome).text_color(on ? t.foreground : t.muted)
-        .hover(s => s.bg(t.hover)).cursor_pointer().tooltip(label).accessibility_label(label).on_mouse_down("left", stop)
-        .on_click(() => {
-          if (on) run("layout.hide", { id: "panel" });
-          else { run("layout.select", { stack: "panel-body", child: id }); run("layout.show", { id: "panel" }); }
-        }).child(svg(icon).size(14));
+      return div().id(`panel-${id}`).w(30).h_full().flex_none().flex().items_center().justify_center()
+        .border_b(2).border_color(on ? t.accent : t.chrome).text_color(on ? t.foreground : t.muted)
+        .hover(s => s.text_color(t.foreground)).cursor_pointer().tooltip(label).accessibility_label(label).on_mouse_down("left", stop)
+        .on_click(() => this.togglePanel(id)).child(svg(icon).size(14));
     };
-    return h_flex().size_full().min_w(0).px(10).pl(lightsPadding).gap(3).items_center().bg(t.chrome).border_b(1).border_color(t.border)
+    return h_flex().size_full().min_w(0).px(10).pl(lightsPadding).gap(3).items_center().bg(t.chrome)
       .on_mouse_up("left", () => { this.pressed = null; })
       .on_scroll_wheel(e => { if (Math.abs(e.delta.y) >= 1) run(e.delta.y > 0 ? "tab.prev" : "tab.next"); })
-      .child(h_flex().id("tab-scroll").flex_1().min_w(0).h_full().items_center().gap(3).overflow_x_scrollbar().children(shown.map(item)))
-      .child(button("tab-new", "+", () => openOverlay({ mod: "new-menu", kind: "popup", width: 250, height: 512 })))
+      .child(h_flex().id("tab-scroll").flex_1().min_w(0).h_full().items_center().gap(2).overflow_x_scrollbar().children(shown.map(item)))
       .when(enabled.includes("files"), el => el.child(panelButton("files", "Files", "mods/files/file.svg")))
       .when(enabled.includes("changes"), el => el.child(panelButton("changes", "Changes", "mods/changes/changes.svg")))
       .when(enabled.includes("git-graph"), el => el.child(panelButton("git-graph", "Git Graph", "mods/my-tabs/git-graph.svg")))

@@ -2,7 +2,7 @@
 // each space's tabs and agents under it, and Agents. With `combined: false` in the settings: the
 // two lists one above the other, as two blocks of this mod would draw them.
 import { v_flex, h_flex } from "gpui-base";
-import { agents, focused, theme, setAgentOrder } from "herdr";
+import { agents, theme, setAgentOrder } from "herdr";
 import { Spaces } from "./spaces.js";
 import { Agents } from "./agents.js";
 import { TEXT, Badge, Rail } from "./ui.js";
@@ -36,7 +36,6 @@ export class Lists {
       .text_size(TEXT.body)
       .on_size_change((size, cx) => this.spaces.resized(size, cx));
     this.spaces.under = null;
-    this.spaces.quiet = null;
     this.spaces.above = null;
     // The rail has no room for tabs: both lists, as numbers.
     if (!this.spaces.settings.combined || collapsed)
@@ -68,7 +67,6 @@ export class Lists {
     // A space's agents hang from its line; a main space's worktrees come after them,
     // so its line carries on, and a worktree's own agents sit one step further in.
     // Every tab shows: a tab with agents as its agents, any other as itself.
-    const shownTab = focused()?.tab;
     const plain = (tab) => !all.some((a) => a.tab === tab.id);
     this.spaces.under = ({ w, tree, kids }) => {
       const items = w.tabs.flatMap((tab) =>
@@ -82,13 +80,10 @@ export class Lists {
         const last = i === items.length - 1 && !kids;
         const [row, ...subs] = x.a
           ? this.agents.agentWithSubs(x.a, i, nested, t)
-          : [this.agents.tabRow(w, x.tab, x.tab.id === shownTab, t)];
+          : [this.agents.tabRow(w, x.tab, t)];
         return [nest([...before, last ? "└" : "├"], row), ...subs.map((s) => nest([...before, last ? "" : "│"], s))];
       });
     };
-    // One row lit: a space whose focused agent or tab shows beneath it leaves it to that row.
-    this.spaces.quiet = (w) =>
-      all.some((a) => a.space === w.id && a.focused) || w.tabs.some((tab) => tab.id === shownTab && plain(tab));
     const body = this.spaces.body(t, false);
     setAgentOrder(order);
     return root.child(body);
@@ -104,7 +99,6 @@ export class Lists {
         .gap(5)
         .justify_center()
         .items_center()
-        .rounded(6)
         .cursor_pointer()
         .text_size(TEXT.label)
         .font_medium()
@@ -120,8 +114,6 @@ export class Lists {
       .pt(6)
       .pb(6)
       .mb(4)
-      .border_b(1)
-      .border_color(t.border)
       .flex_none()
       .gap(6)
       .items_center()
@@ -132,6 +124,6 @@ export class Lists {
           .child(tab("spaces", "Spaces", null))
           .child(tab("agents", "Agents", view.count)),
       )
-      .child(this.tab === "spaces" ? this.spaces.newSpaceButton() : this.agents.sortMenu());
+      .when(this.tab === "agents", (el) => el.child(this.agents.sortMenu()));
   }
 }

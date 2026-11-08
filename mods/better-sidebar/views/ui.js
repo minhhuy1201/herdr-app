@@ -27,7 +27,6 @@ export function Badge(text) {
     .flex_none()
     .px(5)
     .py(1)
-    .rounded(RADIUS.small)
     .border_1()
     .border_color(t.border)
     .text_size(TEXT.badge)

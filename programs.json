@@ -1,0 +1,5 @@
+{
+  "programs": {
+    "claude": { "icon": "mods/better-sidebar/icons/claude-pixel.svg", "tint": false }
+  }
+}
