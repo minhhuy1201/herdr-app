@@ -3,6 +3,7 @@
 !/.gitignore
 !/docs/
 !/README.md
+!/GLOSSARY.md
 !/keys.json
 !/settings.json
 !/programs.json
