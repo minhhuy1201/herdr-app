@@ -13,7 +13,7 @@ Context for a cold start:
 
 **Model:** sonnet - local watch plus remote poll with fallback branching
 
-**Status:** todo
+**Status:** done (remote poll needs a human check)
 
 - [ ] Local file: a loop awaits `watchFolder(<file's folder>)` and rereads the file when its path, or the folder root, is in the result.
 - [ ] Remote file (`props().on` set), or a rejected watch: reread every 10 seconds; redraw only when the text changed.

@@ -1,7 +1,7 @@
 // Read-only Markdown viewer: Preview mode with prose via TextView and fenced code via Editor.
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, Editor, EditorState, TextView } from "gpui-base";
-import { props, readTextFile, theme, settings, nextCommand } from "herdr";
+import { props, readTextFile, theme, settings, nextCommand, watchFolder } from "herdr";
 import { splitFences } from "./split.js";
 
 const LIMIT = 400000;
@@ -18,6 +18,8 @@ export default class MdViewer extends View {
     this.mode = "preview";
     this.text = "";
     this.source = null;
+    this.closed = false;
+    this.signature = null;
     this.load(cx);
     cx.spawn(async (cx) => {
       for (;;) {
@@ -28,6 +30,7 @@ export default class MdViewer extends View {
   }
 
   async close() {
+    this.closed = true;
     this.releaseAll();
   }
 
@@ -52,22 +55,56 @@ export default class MdViewer extends View {
   load(cx) {
     const { file, on } = props() ?? {};
     if (!file) { this.message = "No file given"; return; }
+    this.read(cx);
+    this.watch(cx, file, on ?? null);
+  }
+
+  read(cx) {
+    const { file, on } = props() ?? {};
     cx.spawn(async (cx) => {
+      let text, signature;
       try {
-        const text = await readTextFile(file, { on: on ?? null });
-        if (text === null) this.message = "This file is no longer available";
-        else if (text.includes("\0")) this.message = "Binary file · no text preview";
-        else {
-          const cut = text.length > LIMIT;
-          this.note = cut ? "File truncated at 400,000 characters" : null;
-          this.build(cut ? text.slice(0, LIMIT) : text);
-          this.message = null;
-          if (this.mode === "source") this.setMode("source");
-        }
+        text = await readTextFile(file, { on: on ?? null });
+        signature = text === null ? "\0missing" : text;
       } catch {
-        this.message = "Cannot read this file (binary, too large, or unreadable)";
+        signature = "\0unreadable";
+      }
+      if (this.closed || signature === this.signature) return;
+      this.signature = signature;
+      if (signature === "\0unreadable") this.fail("Cannot read this file (binary, too large, or unreadable)");
+      else if (text === null) this.fail("This file is no longer available");
+      else if (text.includes("\0")) this.fail("Binary file · no text preview");
+      else {
+        const cut = text.length > LIMIT;
+        this.note = cut ? "File truncated at 400,000 characters" : null;
+        this.build(cut ? text.slice(0, LIMIT) : text);
+        this.message = null;
+        if (this.mode === "source") this.setMode("source");
       }
       cx.notify();
+    });
+  }
+
+  fail(message) {
+    this.releaseAll();
+    this.message = message;
+  }
+
+  // Local files follow the folder watch; remote files and rejected watches poll every 10 seconds.
+  watch(cx, file, on) {
+    const poll = (cx) => cx.timer.every(10000, (cx) => { if (!this.closed) this.read(cx); });
+    if (on) return poll(cx);
+    const dir = file.replace(/[\\/][^\\/]*$/, "") || "/";
+    cx.spawn(async (cx) => {
+      try {
+        while (!this.closed) {
+          const changed = await watchFolder(dir);
+          if (this.closed) return;
+          if (changed.some((p) => p === file || p === dir)) this.read(cx);
+        }
+      } catch {
+        if (!this.closed) poll(cx);
+      }
     });
   }
 
