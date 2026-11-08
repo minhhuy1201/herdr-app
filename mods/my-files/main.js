@@ -3,7 +3,7 @@ import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, Editor, EditorState } from "gpui-base";
 import { spaces, panes, focused, exec, run, readTextFile, watchFolder, theme, settings, window, shared, setShared, machines } from "herdr";
 import { fileKind, isMarkdown } from "./file-kind.js";
-import { viewerTabs, prune, decide, bind } from "./viewer-tabs.js";
+import { viewerTabs, decide, sync, normalisePath } from "./viewer-tabs.js";
 
 function location() {
   const space = spaces().find(s => s.active), f = focused();
@@ -130,22 +130,20 @@ export default class Files extends View {
   }
 
   openMarkdown(path) {
-    const target = { file: `${this.root}/${path}`, on: this.on ?? null };
+    const target = { file: normalisePath(`${this.root}/${path}`), on: this.on ?? null };
     const choice = decide(shared("md-viewer.tabs"), target, spaces(), panes());
     if (choice.select) { run("tab.select", { id: choice.select }); return; }
-    this.before = viewerTabs(spaces(), panes());
-    this.openPending = target;
+    this.openPending = { target, before: viewerTabs(spaces(), panes()), at: Date.now() };
     run("tab.new", { name: path.split("/").pop(), mod: "md-viewer", props: target });
   }
 
-  // run() returns no tab id, so a new viewer tab is bound on a later render. Until every machine's
-  // layout is ready, spaces() lacks its tabs and pruning would forget live viewers.
+  // run() returns no tab id, so a new viewer tab is bound on a later render.
   syncTabs() {
-    if (machines().some(m => m.layout !== "ready")) return;
     const stored = shared("md-viewer.tabs") ?? {};
-    const bound = bind(prune(stored, spaces(), panes()), this.openPending, this.before ?? [], spaces(), panes());
-    this.openPending = bound.pending;
-    if (JSON.stringify(bound.registry) !== JSON.stringify(stored)) setShared("md-viewer.tabs", bound.registry);
+    const ready = machines().every(m => m.layout === "ready");
+    const out = sync({ stored, pending: this.openPending ?? null, ready, now: Date.now() }, spaces(), panes());
+    this.openPending = out.pending;
+    if (out.changed) setShared("md-viewer.tabs", out.registry);
   }
 
   show(path, cx) {

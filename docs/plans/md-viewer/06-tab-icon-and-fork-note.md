@@ -15,8 +15,8 @@ Context for a cold start:
 
 **Status:** done
 
-- [ ] A tab whose pane has `mod === "md-viewer"` shows the Material markdown icon at the same size as other tab icons; other tabs are unchanged.
-- [ ] `docs/upstream-forks.md`: the `my-files` row adds "Markdown files open in an `md-viewer` tab"; the `my-tabs` row adds "Markdown icon for `md-viewer` tabs".
-- [ ] `herdr-app check` passes for `my-tabs`; `herdr-app status` shows no errors.
-- [ ] In the app with a viewer tab open, `herdr-app shot` shows the markdown icon in the tab bar. Read the PNG and confirm it.
-- [ ] Commit with `caveman:caveman-commit`.
+- [x] A tab whose pane has `mod === "md-viewer"` shows the Material markdown icon at the same size as other tab icons; other tabs are unchanged.
+- [x] `docs/upstream-forks.md`: the `my-files` row adds "Markdown files open in an `md-viewer` tab"; the `my-tabs` row adds "Markdown icon for `md-viewer` tabs".
+- [x] `herdr-app check` passes for `my-tabs`; `herdr-app status` shows no errors.
+- [x] In the app with a viewer tab open, `herdr-app shot` shows the markdown icon in the tab bar. Read the PNG and confirm it.
+- [x] Commit with `caveman:caveman-commit`.

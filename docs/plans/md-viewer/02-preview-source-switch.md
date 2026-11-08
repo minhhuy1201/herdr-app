@@ -15,11 +15,11 @@ Context for a cold start:
 
 **Status:** done (real click, ctrl-shift-m and copy need a human check)
 
-- [ ] The header shows `Preview | Source`; the active segment uses theme `selected`/`accent` styling, the other is muted; hover feedback on both.
-- [ ] Source mode is a read-only `Editor` with line numbers and soft wrap, terminal font, theme syntax colours. Text can be selected and copied; typing changes nothing.
-- [ ] `keys.json` has `"mod:md-viewer": { "ctrl-shift-m": "md-viewer.toggle" }`; no `keys.error` appears. The viewer's `nextCommand()` loop toggles the mode on `toggle`.
-- [ ] Two viewer tabs keep separate modes when switching between them.
-- [ ] Editor states are released when replaced or when the viewer closes.
-- [ ] `herdr-app check` passes for `md-viewer`; `herdr-app status` shows no errors.
-- [ ] In the app: click the switch and press `ctrl-shift-m`; `herdr-app shot` shows Source mode with line numbers. Read the PNG and confirm it.
-- [ ] Commit with `caveman:caveman-commit`.
+- [x] The header shows `Preview | Source`; the active segment uses theme `selected`/`accent` styling, the other is muted; hover feedback on both.
+- [ ] Source mode is a read-only `Editor` with line numbers and soft wrap, terminal font, theme syntax colours. Text can be selected and copied; typing changes nothing. _(needs human: line numbers and font confirmed in a shot; select, copy and soft wrap not exercised)_
+- [x] `keys.json` has `"mod:md-viewer": { "ctrl-shift-m": "md-viewer.toggle" }`; no `keys.error` appears. The viewer's `nextCommand()` loop toggles the mode on `toggle`.
+- [ ] Two viewer tabs keep separate modes when switching between them. _(needs human: separate per-copy state by design, tab switching not exercised)_
+- [x] Editor states are released when replaced or when the viewer closes.
+- [x] `herdr-app check` passes for `md-viewer`; `herdr-app status` shows no errors.
+- [ ] In the app: click the switch and press `ctrl-shift-m`; `herdr-app shot` shows Source mode with line numbers. Read the PNG and confirm it. _(needs human: toggled with `herdr-app do md-viewer.toggle` and confirmed in a shot; real click and keypress not exercised)_
+- [x] Commit with `caveman:caveman-commit`.

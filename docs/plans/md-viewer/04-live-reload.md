@@ -15,11 +15,11 @@ Context for a cold start:
 
 **Status:** done (remote poll needs a human check)
 
-- [ ] Local file: a loop awaits `watchFolder(<file's folder>)` and rereads the file when its path, or the folder root, is in the result.
-- [ ] Remote file (`props().on` set), or a rejected watch: reread every 10 seconds; redraw only when the text changed.
-- [ ] Reload keeps the current mode. Old editor states are released.
-- [ ] A file deleted while open shows the missing-file message; it comes back if the file is recreated.
-- [ ] The loop stops when the viewer closes (no work after `close`).
-- [ ] `herdr-app check` passes for `md-viewer`; `herdr-app status` shows no errors.
-- [ ] In the app: open a markdown file, append a heading to it from a terminal; `herdr-app shot` shows the new heading within a few seconds. Read the PNG and confirm it.
-- [ ] Commit with `caveman:caveman-commit`.
+- [x] Local file: a loop awaits `watchFolder(<file's folder>)` and rereads the file when its path, or the folder root, is in the result.
+- [ ] Remote file (`props().on` set), or a rejected watch: reread every 10 seconds; redraw only when the text changed. _(needs human: no remote machine configured)_
+- [x] Reload keeps the current mode. Old editor states are released.
+- [x] A file deleted while open shows the missing-file message; it comes back if the file is recreated.
+- [x] The loop stops when the viewer closes (no work after `close`).
+- [x] `herdr-app check` passes for `md-viewer`; `herdr-app status` shows no errors.
+- [x] In the app: open a markdown file, append a heading to it from a terminal; `herdr-app shot` shows the new heading within a few seconds. Read the PNG and confirm it.
+- [x] Commit with `caveman:caveman-commit`.

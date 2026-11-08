@@ -38,3 +38,24 @@ test("fence indented 3 spaces counts, 4 spaces does not", () => {
 test("unclosed fence runs to end of file", () => {
   assert.deepEqual(splitFences("```sh\nls\nmore"), [{ lang: "sh", code: "ls\nmore" }]);
 });
+
+import { shareDefinitions } from "../split.js";
+
+test("link reference definitions are appended to markdown segments that lack them", () => {
+  const segs = splitFences("See [docs][d] here.\n\n```ts\nx\n```\n\nAlso [more][d].\n\n[d]: https://example.com/d \"Title\"\n");
+  const out = shareDefinitions(segs);
+  assert.equal(out[0].md, 'See [docs][d] here.\n\n[d]: https://example.com/d "Title"');
+  assert.equal(out[1].code, "x");
+  assert.ok(out[2].md.trim().startsWith("Also [more][d]."));
+  assert.equal(out[2].md.match(/\[d\]:/g).length, 1);
+});
+
+test("shareDefinitions ignores footnotes, deep indent and definitions inside code", () => {
+  const segs = [{ md: "a [x][y]\n[^1]: note\n    [z]: https://indented" }, { lang: "md", code: "[c]: https://code" }, { md: "b" }];
+  assert.deepEqual(shareDefinitions(segs), segs);
+});
+
+test("shareDefinitions without definitions returns the segments unchanged", () => {
+  const segs = splitFences("one\n\n```\nc\n```\n\ntwo");
+  assert.deepEqual(shareDefinitions(segs), segs);
+});

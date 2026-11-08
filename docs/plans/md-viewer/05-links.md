@@ -15,10 +15,10 @@ Context for a cold start:
 
 **Status:** done (real link clicks need a human check)
 
-- [ ] Pure resolver, no Herdr imports: link plus the viewer file's path in; out `{ web: url }`, `{ markdown: absolutePath }` or nothing.
-- [ ] `node --test` resolver cases pass: `./other.md`, `../docs/a.md`, `a.md#part` (anchor dropped), URL-encoded spaces, `https://x`, `http://x`, `#anchor` (nothing), `mailto:a@b` (nothing), `image.png` (nothing).
-- [ ] The open-or-select module and its tests exist in `md-viewer`, identical to `my-files`'s copy; both test runs pass.
-- [ ] Web links open with the platform opener; markdown links open or select a viewer tab with the same `on` as the current file.
-- [ ] `herdr-app check` passes for `md-viewer`; `herdr-app status` shows no errors.
-- [ ] In the app: a doc with a web link and a relative `.md` link; the web link opens the browser; the relative link opens one viewer tab and a second click selects it.
-- [ ] Commit with `caveman:caveman-commit`.
+- [x] Pure resolver, no Herdr imports: link plus the viewer file's path in; out `{ web: url }`, `{ markdown: absolutePath }` or nothing.
+- [x] `node --test` resolver cases pass: `./other.md`, `../docs/a.md`, `a.md#part` (anchor dropped), URL-encoded spaces, `https://x`, `http://x`, `#anchor` (nothing), `mailto:a@b` (nothing), `image.png` (nothing).
+- [x] The open-or-select module and its tests exist in `md-viewer`, identical to `my-files`'s copy; both test runs pass.
+- [ ] Web links open with the platform opener; markdown links open or select a viewer tab with the same `on` as the current file. _(needs human: logic covered by tests, link clicks not exercised)_
+- [x] `herdr-app check` passes for `md-viewer`; `herdr-app status` shows no errors.
+- [ ] In the app: a doc with a web link and a relative `.md` link; the web link opens the browser; the relative link opens one viewer tab and a second click selects it. _(needs human: no real click available to the agent)_
+- [x] Commit with `caveman:caveman-commit`.

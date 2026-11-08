@@ -2,11 +2,16 @@
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, Editor, EditorState, TextView } from "gpui-base";
 import { props, readTextFile, theme, settings, nextCommand, watchFolder, exec, run, spaces, panes, machines, shared, setShared, window } from "herdr";
-import { splitFences } from "./split.js";
+import { splitFences, shareDefinitions } from "./split.js";
+import { editorLanguage } from "./code-lang.js";
 import { resolveLink, opener } from "./links.js";
-import { viewerTabs, prune, decide, bind } from "./viewer-tabs.js";
+import { viewerTabs, decide, sync, normalisePath } from "./viewer-tabs.js";
 
 const LIMIT = 400000;
+const OPEN_POLL_MS = 250;
+const REMOTE_POLL_MS = 10000;
+const CODE_LINE_PX = 22;
+const CODE_PADDING_PX = 28;
 
 function syntax(t) {
   return { keyword: t.ansi5, string: t.ansi2, comment: t.dim, function: t.ansi4, type: t.ansi3, number: t.ansi1, constant: t.ansi6 };
@@ -22,6 +27,9 @@ export default class MdViewer extends View {
     this.source = null;
     this.closed = false;
     this.signature = null;
+    this.readSeq = 0;
+    this.syntaxKey = null;
+    this.pending = null;
     this.load(cx);
     cx.spawn(async (cx) => {
       for (;;) {
@@ -45,30 +53,27 @@ export default class MdViewer extends View {
       exec(cmd, args).catch(() => {});
       return;
     }
-    const target = { file: link.markdown, on: on ?? null };
+    const target = { file: normalisePath(link.markdown), on: on ?? null };
     const choice = decide(shared("md-viewer.tabs"), target, spaces(), panes());
     if (choice.select) { run("tab.select", { id: choice.select }); return; }
-    this.before = viewerTabs(spaces(), panes());
-    this.openPending = target;
-    run("tab.new", { name: link.markdown.split("/").pop(), mod: "md-viewer", props: target });
-    // After tab.new this copy may stop rendering, so it polls until the new tab is bound.
+    this.pending = { target, before: viewerTabs(spaces(), panes()), at: Date.now() };
+    run("tab.new", { name: target.file.split("/").pop(), mod: "md-viewer", props: target });
+    // After tab.new this copy may stop rendering, so it polls until the new tab is bound or the open expires.
     cx.spawn(async (cx) => {
-      for (let i = 0; i < 40 && this.openPending && !this.closed; i++) {
-        await cx.sleep(250);
+      while (this.pending && !this.closed) {
+        await cx.sleep(OPEN_POLL_MS);
         this.syncTabs();
       }
-      this.openPending = null;
     });
   }
 
-  // run() returns no tab id, so a new viewer tab is bound on a later render. Until every machine's
-  // layout is ready, spaces() lacks its tabs and pruning would forget live viewers.
+  // run() returns no tab id, so a new viewer tab is bound on a later render.
   syncTabs() {
-    if (machines().some((m) => m.layout !== "ready")) return;
     const stored = shared("md-viewer.tabs") ?? {};
-    const bound = bind(prune(stored, spaces(), panes()), this.openPending, this.before ?? [], spaces(), panes());
-    this.openPending = bound.pending;
-    if (JSON.stringify(bound.registry) !== JSON.stringify(stored)) setShared("md-viewer.tabs", bound.registry);
+    const ready = machines().every((m) => m.layout === "ready");
+    const out = sync({ stored, pending: this.pending, ready, now: Date.now() }, spaces(), panes());
+    this.pending = out.pending;
+    if (out.changed) setShared("md-viewer.tabs", out.registry);
   }
 
   releaseAll() {
@@ -98,6 +103,7 @@ export default class MdViewer extends View {
 
   read(cx) {
     const { file, on } = props() ?? {};
+    const seq = ++this.readSeq;
     cx.spawn(async (cx) => {
       let text, signature;
       try {
@@ -106,7 +112,7 @@ export default class MdViewer extends View {
       } catch {
         signature = "\0unreadable";
       }
-      if (this.closed || signature === this.signature) return;
+      if (this.closed || seq !== this.readSeq || signature === this.signature) return;
       this.signature = signature;
       if (signature === "\0unreadable") this.fail("Cannot read this file (binary, too large, or unreadable)");
       else if (text === null) this.fail("This file is no longer available");
@@ -129,15 +135,16 @@ export default class MdViewer extends View {
 
   // Local files follow the folder watch; remote files and rejected watches poll every 10 seconds.
   watch(cx, file, on) {
-    const poll = (cx) => cx.timer.every(10000, (cx) => { if (!this.closed) this.read(cx); });
+    const poll = (cx) => cx.timer.every(REMOTE_POLL_MS, (cx) => { if (!this.closed) this.read(cx); });
     if (on) return poll(cx);
-    const dir = file.replace(/[\\/][^\\/]*$/, "") || "/";
+    const dir = normalisePath(file.replace(/[\\/][^\\/]*$/, "") || "/");
+    const target = normalisePath(file);
     cx.spawn(async (cx) => {
       try {
         while (!this.closed) {
           const changed = await watchFolder(dir);
           if (this.closed) return;
-          if (changed.some((p) => p === file || p === dir)) this.read(cx);
+          if (changed.some((p) => normalisePath(p) === target || normalisePath(p) === dir)) this.read(cx);
         }
       } catch {
         if (!this.closed) poll(cx);
@@ -149,12 +156,13 @@ export default class MdViewer extends View {
     this.releaseAll();
     this.text = text;
     const t = theme();
-    this.parts = splitFences(text).map((seg) => {
+    this.syntaxKey = JSON.stringify(syntax(t));
+    this.parts = shareDefinitions(splitFences(text)).map((seg) => {
       if (seg.md !== undefined) return { md: seg.md };
       return {
         lines: seg.code.split("\n").length,
         state: EditorState.new({
-          language: seg.lang || "txt", readonly: true, value: seg.code, line_numbers: false, folding: false,
+          language: editorLanguage(seg.lang), readonly: true, value: seg.code, line_numbers: false, folding: false,
           font_family: settings().font_family, font_size: 13, syntax: syntax(t),
         }),
       };
@@ -171,8 +179,16 @@ export default class MdViewer extends View {
       .child(label);
   }
 
+  // Syntax colours are baked into each editor state, so a theme change rebuilds them.
+  restyle() {
+    if (this.message || this.syntaxKey === null || JSON.stringify(syntax(theme())) === this.syntaxKey) return;
+    this.build(this.text);
+    if (this.mode === "source") this.setMode("source");
+  }
+
   render() {
     this.syncTabs();
+    this.restyle();
     const t = theme(), file = props()?.file ?? "";
     const showSource = this.mode === "source" && this.source && !this.message;
     const body = showSource ? null : this.message
@@ -181,7 +197,7 @@ export default class MdViewer extends View {
           .font_family("Inter").text_size(15).line_height(1.6)
           .children(this.parts.map((p, i) => p.state
             ? v_flex().flex_none().rounded(6).bg(t.surface).border(1).border_color(t.border).p(12)
-                .h(p.lines * 22 + 28).child(Editor.new(p.state).size_full())
+                .h(p.lines * CODE_LINE_PX + CODE_PADDING_PX).child(Editor.new(p.state).size_full())
             : TextView.markdown(`md${i}`, p.md).selectable(true).on_link_click((url, cx) => this.follow(url, cx))))
           .when(Boolean(this.note), (el) => el.child(div().text_size(12).text_color(t.dim).child(this.note)));
     return v_flex().id("md-viewer").size_full().min_h(0).bg(t.background).text_color(t.foreground)

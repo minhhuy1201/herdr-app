@@ -16,10 +16,10 @@ Context for a cold start:
 
 **Status:** done (real clicks need a human check)
 
-- [ ] Pure module, no Herdr imports, with functions over plain data: find a live tab for `{ file, on }` in the registry; prune entries whose tab is gone (a tab is live while `spaces()` lists it and `panes()` has an `md-viewer` pane in it); bind a pending open to a new `md-viewer` tab not in the snapshot taken before `tab.new`.
-- [ ] `node --test` cases pass: empty registry asks to open; live entry for same file and machine selects it; same file on another machine opens; gone tab is pruned; new `md-viewer` tab after a pending open is bound; an unrelated new tab is not bound.
-- [ ] The registry lives in shared state `"md-viewer.tabs"` (tab id to `{ file, on }`), so it survives a restart.
-- [ ] `my-files` uses the module: select with `tab.select { id }`, or snapshot, record the pending file and run `tab.new`; on render, bind and write the registry.
-- [ ] `herdr-app check` passes for `my-files`; `herdr-app status` shows no errors.
-- [ ] In the app: click a markdown file twice; `herdr-app ls` shows one viewer tab. Close it, click again; a new tab opens. Open two `README.md` files from different folders; two tabs.
-- [ ] Commit with `caveman:caveman-commit`.
+- [x] Pure module, no Herdr imports, with functions over plain data: find a live tab for `{ file, on }` in the registry; prune entries whose tab is gone (a tab is live while `spaces()` lists it and `panes()` has an `md-viewer` pane in it); bind a pending open to a new `md-viewer` tab not in the snapshot taken before `tab.new`.
+- [x] `node --test` cases pass: empty registry asks to open; live entry for same file and machine selects it; same file on another machine opens; gone tab is pruned; new `md-viewer` tab after a pending open is bound; an unrelated new tab is not bound.
+- [x] The registry lives in shared state `"md-viewer.tabs"` (tab id to `{ file, on }`), so it survives a restart.
+- [x] `my-files` uses the module: select with `tab.select { id }`, or snapshot, record the pending file and run `tab.new`; on render, bind and write the registry.
+- [x] `herdr-app check` passes for `my-files`; `herdr-app status` shows no errors.
+- [ ] In the app: click a markdown file twice; `herdr-app ls` shows one viewer tab. Close it, click again; a new tab opens. Open two `README.md` files from different folders; two tabs. _(needs human: no real click available to the agent)_
+- [x] Commit with `caveman:caveman-commit`.

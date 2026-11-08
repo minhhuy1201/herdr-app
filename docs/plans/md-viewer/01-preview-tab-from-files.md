@@ -29,14 +29,14 @@ Context for a cold start:
 
 **Status:** done (real click and clipboard copy need a human check)
 
-- [ ] Work is on branch `feat/md-viewer` (create it from `main` before the first commit). The spec, this plan and the glossary terms go in the first commit.
-- [ ] Pure splitter module in `md-viewer`, no Herdr imports: markdown text in, ordered segments out (`{ md }` or `{ lang, code }`), following the CommonMark fence rules in the spec.
-- [ ] `node --test` splitter cases pass: no fences; ``` with a language; ~~~; longer closing fence; shorter inner fence that does not close; fence indented 3 spaces and 4 spaces (not a fence); unclosed fence; empty file; markdown before and after code.
-- [ ] Pure `isMarkdown(name)` in `my-files` (case-insensitive `.md`, `.markdown`, `.mdx`); `node --test` cases beside the `fileKind` tests, including `README.MD` and `notes.md.bak` (false).
-- [ ] `md-viewer` has `mod.json` with `place: "none"`; reads `props().file` with `readTextFile(file, { on: props().on })`; shows a header row with the file name, then Preview mode as specified.
-- [ ] Missing, unreadable or binary file (contains `\0`) shows a message in the tab. Text over 400,000 characters is cut with a note.
-- [ ] Click on a markdown file in `my-files` runs `tab.new { name: <file name>, mod: "md-viewer", props: { file: <absolute path>, on } }`. Other files keep the inline view.
-- [ ] Inter static fonts and the OFL license are in the mod's `fonts/` folder. `.gitignore` allows `mods/md-viewer/`.
-- [ ] `herdr-app check` passes for `md-viewer` and `my-files`; `herdr-app status` shows no errors.
-- [ ] In the app, click a real markdown file with headings, bold, a list, a table and a code block. `herdr-app shot` shows bold headings, bold text and coloured code. Read the PNG and confirm it. Select text and press ctrl-c; paste in a terminal to confirm copy works.
-- [ ] Commit with `caveman:caveman-commit`.
+- [x] Work is on branch `feat/md-viewer` (create it from `main` before the first commit). The spec, this plan and the glossary terms go in the first commit.
+- [x] Pure splitter module in `md-viewer`, no Herdr imports: markdown text in, ordered segments out (`{ md }` or `{ lang, code }`), following the CommonMark fence rules in the spec.
+- [x] `node --test` splitter cases pass: no fences; ``` with a language; ~~~; longer closing fence; shorter inner fence that does not close; fence indented 3 spaces and 4 spaces (not a fence); unclosed fence; empty file; markdown before and after code.
+- [x] Pure `isMarkdown(name)` in `my-files` (case-insensitive `.md`, `.markdown`, `.mdx`); `node --test` cases beside the `fileKind` tests, including `README.MD` and `notes.md.bak` (false).
+- [x] `md-viewer` has `mod.json` with `place: "none"`; reads `props().file` with `readTextFile(file, { on: props().on })`; shows a header row with the file name, then Preview mode as specified.
+- [x] Missing, unreadable or binary file (contains `\0`) shows a message in the tab. Text over 400,000 characters is cut with a note.
+- [x] Click on a markdown file in `my-files` runs `tab.new { name: <file name>, mod: "md-viewer", props: { file: <absolute path>, on } }`. Other files keep the inline view.
+- [x] Inter static fonts and the OFL license are in the mod's `fonts/` folder. `.gitignore` allows `mods/md-viewer/`.
+- [x] `herdr-app check` passes for `md-viewer` and `my-files`; `herdr-app status` shows no errors.
+- [ ] In the app, click a real markdown file with headings, bold, a list, a table and a code block. `herdr-app shot` shows bold headings, bold text and coloured code. Read the PNG and confirm it. Select text and press ctrl-c; paste in a terminal to confirm copy works. _(needs human: shot confirmed bold headings and coloured code; real click and ctrl-c copy not exercised)_
+- [x] Commit with `caveman:caveman-commit`.
