@@ -21,6 +21,10 @@
 !/mods/git-graph/
 !/mods/my-files/
 !/mods/my-tabs/
+!/mods/my-menu/
+!/mods/my-palette/
+!/mods/my-picker/
+!/mods/my-status/
 gpui-kit.d.ts
 herdr.d.ts
 jsconfig.json
