@@ -1,8 +1,10 @@
 // Read-only Markdown viewer: Preview mode with prose via TextView and fenced code via Editor.
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, Editor, EditorState, TextView } from "gpui-base";
-import { props, readTextFile, theme, settings, nextCommand, watchFolder } from "herdr";
+import { props, readTextFile, theme, settings, nextCommand, watchFolder, exec, run, spaces, panes, machines, shared, setShared, window } from "herdr";
 import { splitFences } from "./split.js";
+import { resolveLink, opener } from "./links.js";
+import { viewerTabs, prune, decide, bind } from "./viewer-tabs.js";
 
 const LIMIT = 400000;
 
@@ -32,6 +34,41 @@ export default class MdViewer extends View {
   async close() {
     this.closed = true;
     this.releaseAll();
+  }
+
+  follow(url, cx) {
+    const { file, on } = props() ?? {};
+    const link = resolveLink(url, file);
+    if (!link) return;
+    if (link.web) {
+      const { cmd, args } = opener(window().platform, link.web);
+      exec(cmd, args).catch(() => {});
+      return;
+    }
+    const target = { file: link.markdown, on: on ?? null };
+    const choice = decide(shared("md-viewer.tabs"), target, spaces(), panes());
+    if (choice.select) { run("tab.select", { id: choice.select }); return; }
+    this.before = viewerTabs(spaces(), panes());
+    this.openPending = target;
+    run("tab.new", { name: link.markdown.split("/").pop(), mod: "md-viewer", props: target });
+    // After tab.new this copy may stop rendering, so it polls until the new tab is bound.
+    cx.spawn(async (cx) => {
+      for (let i = 0; i < 40 && this.openPending && !this.closed; i++) {
+        await cx.sleep(250);
+        this.syncTabs();
+      }
+      this.openPending = null;
+    });
+  }
+
+  // run() returns no tab id, so a new viewer tab is bound on a later render. Until every machine's
+  // layout is ready, spaces() lacks its tabs and pruning would forget live viewers.
+  syncTabs() {
+    if (machines().some((m) => m.layout !== "ready")) return;
+    const stored = shared("md-viewer.tabs") ?? {};
+    const bound = bind(prune(stored, spaces(), panes()), this.openPending, this.before ?? [], spaces(), panes());
+    this.openPending = bound.pending;
+    if (JSON.stringify(bound.registry) !== JSON.stringify(stored)) setShared("md-viewer.tabs", bound.registry);
   }
 
   releaseAll() {
@@ -135,6 +172,7 @@ export default class MdViewer extends View {
   }
 
   render() {
+    this.syncTabs();
     const t = theme(), file = props()?.file ?? "";
     const showSource = this.mode === "source" && this.source && !this.message;
     const body = showSource ? null : this.message
@@ -144,7 +182,7 @@ export default class MdViewer extends View {
           .children(this.parts.map((p, i) => p.state
             ? v_flex().flex_none().rounded(6).bg(t.surface).border(1).border_color(t.border).p(12)
                 .h(p.lines * 22 + 28).child(Editor.new(p.state).size_full())
-            : TextView.markdown(`md${i}`, p.md).selectable(true)))
+            : TextView.markdown(`md${i}`, p.md).selectable(true).on_link_click((url, cx) => this.follow(url, cx))))
           .when(Boolean(this.note), (el) => el.child(div().text_size(12).text_color(t.dim).child(this.note)));
     return v_flex().id("md-viewer").size_full().min_h(0).bg(t.background).text_color(t.foreground)
       .child(h_flex().h(36).flex_none().px(16).items_center().border_b(1).border_color(t.border)

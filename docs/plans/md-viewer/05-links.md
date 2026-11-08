@@ -7,13 +7,13 @@ Spec: [docs/specs/md-viewer.md](../../specs/md-viewer.md), section "Links". Read
 Context for a cold start:
 - `TextView` has `.on_link_click((url, cx) => ...)`, which replaces its default URL opening.
 - The open-or-select module from ticket 03 lives in `my-files`. Copy it into `md-viewer` with its tests (a mod cannot import another mod's folder); keep both copies identical.
-- System opener: `xdg-open` on Linux, `open` on macOS, `cmd /c start "" <url>` on Windows, through `exec` with an argument list.
+- System opener: `xdg-open` on Linux, `open` on macOS, `rundll32 url.dll,FileProtocolHandler <url>` on Windows (not `cmd /c start`: cmd parses `&` in a URL as a command separator), through `exec` with an argument list.
 
 **Blocked by:** 03 (Select the open viewer tab instead of opening a duplicate)
 
 **Model:** sonnet - link resolution rules plus a copied registry module
 
-**Status:** todo
+**Status:** done (real link clicks need a human check)
 
 - [ ] Pure resolver, no Herdr imports: link plus the viewer file's path in; out `{ web: url }`, `{ markdown: absolutePath }` or nothing.
 - [ ] `node --test` resolver cases pass: `./other.md`, `../docs/a.md`, `a.md#part` (anchor dropped), URL-encoded spaces, `https://x`, `http://x`, `#anchor` (nothing), `mailto:a@b` (nothing), `image.png` (nothing).
