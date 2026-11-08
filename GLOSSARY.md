@@ -16,8 +16,12 @@ _Avoid_: PR, pull request
 A file that differs from the last Commit, as the Changes panel lists it: staged, unstaged or untracked.
 _Avoid_: uncommitted change, local change
 
+**Branch range**:
+The files HEAD changed since it left its comparison branch (its upstream, else the remote's default branch), counted from their merge base,, listed in the Changes panel's "Committed" group.
+_Avoid_: committed changes, unpushed files
+
 **Review dialog**:
-The dialog that shows a side-by-side diff for review only. It shows either every file of one Commit, with a file list and a search field, or one Working change on its own.
+The dialog that shows a side-by-side diff for review only. It shows either every file of one Commit, with a file list and a search field, or one Working change or one Branch range file on its own.
 _Avoid_: diff modal, diff popup, diff tab
 
 **Side-by-side diff**:
