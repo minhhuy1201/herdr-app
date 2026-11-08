@@ -30,7 +30,7 @@ Only the files I own are tracked (see `.gitignore`). Herdr writes and rewrites e
 
 - `better-sidebar` runs `gh pr ...` with my GitHub login to show PR status per space, cached for 60 s. Set `pull_request_status: false` in its `mod.json` settings to turn it off.
 - Links to commits and PRs open in the browser only when clicked.
-- The mods run `git` (read-only, except a commit when I press commit), `sh` (listing folders, reading `~/.claude/` subagent metadata) and `hc` locally. Nothing else reaches the network.
+- The mods run `git` (read-only), `sh` (listing folders, reading `~/.claude/` subagent metadata) and `hc` locally. Nothing else reaches the network.
 
 ## Checks
 
