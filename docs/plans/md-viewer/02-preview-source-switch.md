@@ -13,7 +13,7 @@ Context for a cold start:
 
 **Model:** sonnet - adds mode state and a key binding rule
 
-**Status:** todo
+**Status:** done (real click, ctrl-shift-m and copy need a human check)
 
 - [ ] The header shows `Preview | Source`; the active segment uses theme `selected`/`accent` styling, the other is muted; hover feedback on both.
 - [ ] Source mode is a read-only `Editor` with line numbers and soft wrap, terminal font, theme syntax colours. Text can be selected and copied; typing changes nothing.

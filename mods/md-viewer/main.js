@@ -1,7 +1,7 @@
 // Read-only Markdown viewer: Preview mode with prose via TextView and fenced code via Editor.
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, Editor, EditorState, TextView } from "gpui-base";
-import { props, readTextFile, theme, settings } from "herdr";
+import { props, readTextFile, theme, settings, nextCommand } from "herdr";
 import { splitFences } from "./split.js";
 
 const LIMIT = 400000;
@@ -15,7 +15,38 @@ export default class MdViewer extends View {
     this.parts = [];
     this.message = "Loading file…";
     this.note = null;
+    this.mode = "preview";
+    this.text = "";
+    this.source = null;
     this.load(cx);
+    cx.spawn(async (cx) => {
+      for (;;) {
+        const command = await nextCommand();
+        if (command === "toggle") { this.setMode(this.mode === "preview" ? "source" : "preview"); cx.notify(); }
+      }
+    });
+  }
+
+  async close() {
+    this.releaseAll();
+  }
+
+  releaseAll() {
+    for (const p of this.parts) p.state?.release();
+    this.parts = [];
+    this.source?.release();
+    this.source = null;
+  }
+
+  setMode(mode) {
+    if (this.message) return;
+    this.mode = mode;
+    if (mode === "source" && !this.source) {
+      this.source = EditorState.new({
+        language: "markdown", readonly: true, value: this.text, line_numbers: true, folding: false, soft_wrap: true,
+        font_family: settings().font_family, font_size: 13, syntax: syntax(theme()),
+      });
+    }
   }
 
   load(cx) {
@@ -31,6 +62,7 @@ export default class MdViewer extends View {
           this.note = cut ? "File truncated at 400,000 characters" : null;
           this.build(cut ? text.slice(0, LIMIT) : text);
           this.message = null;
+          if (this.mode === "source") this.setMode("source");
         }
       } catch {
         this.message = "Cannot read this file (binary, too large, or unreadable)";
@@ -40,7 +72,8 @@ export default class MdViewer extends View {
   }
 
   build(text) {
-    for (const p of this.parts) p.state?.release();
+    this.releaseAll();
+    this.text = text;
     const t = theme();
     this.parts = splitFences(text).map((seg) => {
       if (seg.md !== undefined) return { md: seg.md };
@@ -54,9 +87,20 @@ export default class MdViewer extends View {
     });
   }
 
+  segment(label, mode, t) {
+    const active = this.mode === mode;
+    return div().id(`md-mode-${mode}`).px(10).h(24).flex().items_center().rounded(4).text_size(12)
+      .cursor_pointer()
+      .when(active, (el) => el.bg(t.selected)).text_color(active ? t.accent : t.muted)
+      .hover((s) => s.bg(active ? t.selected : t.hover).text_color(active ? t.accent : t.foreground))
+      .on_click((_e, cx) => { this.setMode(mode); cx.notify(); })
+      .child(label);
+  }
+
   render() {
     const t = theme(), file = props()?.file ?? "";
-    const body = this.message
+    const showSource = this.mode === "source" && this.source && !this.message;
+    const body = showSource ? null : this.message
       ? div().p(24).text_color(t.dim).child(this.message)
       : v_flex().w_full().max_w(860).mx_auto().px(40).py(32).gap(12)
           .font_family("Inter").text_size(15).line_height(1.6)
@@ -67,7 +111,11 @@ export default class MdViewer extends View {
           .when(Boolean(this.note), (el) => el.child(div().text_size(12).text_color(t.dim).child(this.note)));
     return v_flex().id("md-viewer").size_full().min_h(0).bg(t.background).text_color(t.foreground)
       .child(h_flex().h(36).flex_none().px(16).items_center().border_b(1).border_color(t.border)
-        .child(div().font_semibold().truncate().child(file.split(/[\\/]/).pop())))
-      .child(v_flex().id("md-scroll").flex_1().min_h(0).overflow_y_scrollbar().child(body));
+        .child(div().font_semibold().truncate().flex_1().child(file.split(/[\\/]/).pop()))
+        .child(h_flex().flex_none().gap(2).p(2).rounded(6).border(1).border_color(t.border)
+          .child(this.segment("Preview", "preview", t)).child(this.segment("Source", "source", t))))
+      .child(showSource
+        ? v_flex().flex_1().min_h(0).p(8).child(Editor.new(this.source).size_full())
+        : v_flex().id("md-scroll").flex_1().min_h(0).overflow_y_scrollbar().child(body));
   }
 }
