@@ -24,7 +24,11 @@ Only the files I own are tracked (see `.gitignore`). Herdr writes and rewrites e
 | `mods/my-files/` | The Files panel, with Material file icons. |
 | `mods/better-changes/` | The Changes panel (read-only git status, diffs, commits), with Material file icons. |
 | `mods/git-graph/` | The Git Graph panel, with Material file icons. |
-| `docs/` | Specs and plans for larger changes. |
+| `mods/my-palette/` | The command palette (`ctrl-shift-p`): square, centered, no Herdr frame. |
+| `mods/my-picker/` | The "Go to…" picker (`ctrl-shift-k`): square, centered, no Herdr frame. |
+| `mods/my-menu/` | The right-click menu for terminals, tabs and spaces: square, no Herdr frame. |
+| `mods/my-status/` | The status bar; its palette hint opens `my-palette`. |
+| `docs/` | Specs and plans for larger changes, and `upstream-forks.md`: which files copy Herdr's and how to follow a Herdr update. |
 
 ## Network and programs
 

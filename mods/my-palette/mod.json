@@ -1,0 +1,13 @@
+{
+  "place": "none",
+  "title": "Command palette",
+  "overlay": {
+    "kind": "dialog",
+    "width": 640,
+    "frame": "none"
+  },
+  "cloned_from": {
+    "name": "frame/palette",
+    "version": "0.1.13"
+  }
+}
