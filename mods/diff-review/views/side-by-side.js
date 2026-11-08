@@ -4,6 +4,7 @@ import { h_flex, Scrollbar, v_virtual_list } from "gpui-base";
 import { theme } from "herdr";
 import { Message } from "./chrome.js";
 import { MAX_LINES } from "../diff/rows.js";
+import { cells } from "../diff/cells.js";
 
 const ROW = 24;
 const GUTTER = 48;
@@ -14,7 +15,7 @@ export function widthOf(state) {
   if (state.type !== "rows") return 300;
   const longest = Math.max(
     0,
-    ...state.rows.map((r) => (r.kind === "pair" ? Math.max(r.left?.text.length ?? 0, r.right?.text.length ?? 0) : 0)),
+    ...state.rows.map((r) => (r.kind === "pair" ? Math.max(cells(r.left?.text ?? ""), cells(r.right?.text ?? "")) : 0)),
   );
   return Math.ceil(longest * CHAR + 24);
 }

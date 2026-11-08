@@ -124,7 +124,8 @@ export default class GitGraph extends View {
       }
       this.root = root;
       const rootGit = (args) => git(args, root);
-      this.repoName = await readRepoName(rootGit, root);
+      // The name only changes with the root, and a context change resets it.
+      this.repoName ??= await readRepoName(rootGit, root);
       this.watch(taskCx, rootGit, location.on);
       this.graph = await readGraph(rootGit, {
         count: Math.max(PAGE_SIZE, this.graph.rows.length),

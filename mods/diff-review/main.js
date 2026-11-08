@@ -11,6 +11,11 @@ import { Header, CommitHeader, Message } from "./views/chrome.js";
 import { fileList } from "./views/file-list.js";
 import { diffBody, widthOf } from "./views/side-by-side.js";
 
+// The overlay may not hold the keyboard on its first frame, so focus is asked again.
+const FOCUS_RETRY_MS = 400;
+// Sideways scrolling stops while this much of the longest line is still in view.
+const MIN_VISIBLE_PX = 240;
+
 export default class ReviewDialog extends View {
   init(_props, cx) {
     const p = props();
@@ -33,8 +38,7 @@ export default class ReviewDialog extends View {
         cx.notify();
       });
       this.input.focus();
-      // The overlay may not hold the keyboard yet on the first frame.
-      cx.timer.after(400, () => this.input.focus());
+      cx.timer.after(FOCUS_RETRY_MS, () => this.input.focus());
     }
     if (!p?.root) return;
     const git = (args) => exec("git", [...READ_ONLY, ...args], { cwd: p.root, on: p.on });
@@ -50,7 +54,7 @@ export default class ReviewDialog extends View {
 
   load(cx, read) {
     const token = ++this.token;
-    if (this.state.type !== "rows") this.state = { type: "loading" };
+    this.state = { type: "loading" };
     cx.spawn(async (cx) => {
       let next;
       try {
@@ -103,7 +107,7 @@ export default class ReviewDialog extends View {
   scrollSideways(e, cx) {
     const delta = e.delta.x || (e.modifiers?.shift ? e.delta.y : 0);
     if (!delta) return;
-    const furthest = Math.max(0, this.width - 240);
+    const furthest = Math.max(0, this.width - MIN_VISIBLE_PX);
     this.offset = Math.max(0, Math.min(furthest, this.offset - delta));
     cx.stop_propagation();
     cx.notify();

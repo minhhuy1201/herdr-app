@@ -29,17 +29,26 @@ function pairRuns(lines) {
   return rows;
 }
 
+// The file's status letter comes from the header: line counts cannot tell an emptied
+// file from a deleted one, and a binary diff has no lines at all.
+function headerStatus(lines) {
+  if (lines.some((line) => line.startsWith("new file mode "))) return "A";
+  if (lines.some((line) => line.startsWith("deleted file mode "))) return "D";
+  return "M";
+}
+
 export function parseDiff(text) {
   const all = text.replace(/\n$/, "").split("\n");
   const first = all.findIndex((line) => HUNK.test(line));
+  const status = headerStatus(first < 0 ? all : all.slice(0, first));
   if (first < 0) {
-    if (BINARY.test(text)) return { type: "binary" };
-    if (/^Subproject commit /m.test(text)) return { type: "mode", note: "Submodule change" };
-    if (/^(old|new) mode /m.test(text)) return { type: "mode", note: "Mode change" };
-    return { type: "empty" };
+    if (BINARY.test(text)) return { type: "binary", status };
+    if (/^Subproject commit /m.test(text)) return { type: "mode", note: "Submodule change", status };
+    if (/^(old|new) mode /m.test(text)) return { type: "mode", note: "Mode change", status };
+    return { type: "empty", status };
   }
   const body = all.slice(first);
-  if (body.some((line) => /^[-+]Subproject commit /.test(line))) return { type: "mode", note: "Submodule change" };
+  if (body.some((line) => /^[-+]Subproject commit /.test(line))) return { type: "mode", note: "Submodule change", status };
   const truncated = body.length > MAX_LINES;
   let oldLine = 0;
   let newLine = 0;
@@ -65,7 +74,7 @@ export function parseDiff(text) {
     }
     // "\ No newline at end of file" and other metadata consume no line number.
   }
-  return { type: "rows", rows: pairRuns(lines), truncated };
+  return { type: "rows", rows: pairRuns(lines), truncated, status };
 }
 
 export function addedFile(text) {

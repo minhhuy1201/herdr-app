@@ -64,7 +64,7 @@ test("the line limit cuts the diff and flags it; long lines get an ellipsis", ()
 test("binary, mode-only, submodule and empty output are recognised", () => {
   assert.equal(parseDiff(diff("diff --git a/i b/i", "Binary files a/i and b/i differ")).type, "binary");
   assert.equal(parseDiff(diff("diff --git a/i b/i", "GIT binary patch", "literal 3")).type, "binary");
-  assert.deepEqual(parseDiff(diff("diff --git a/s b/s", "old mode 100644", "new mode 100755")), { type: "mode", note: "Mode change" });
+  assert.deepEqual(parseDiff(diff("diff --git a/s b/s", "old mode 100644", "new mode 100755")), { type: "mode", note: "Mode change", status: "M" });
   assert.equal(parseDiff(diff("@@ -1 +1 @@", "-Subproject commit abc", "+Subproject commit def")).type, "mode");
   assert.equal(parseDiff("").type, "empty");
 });
