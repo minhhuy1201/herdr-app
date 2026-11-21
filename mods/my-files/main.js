@@ -344,7 +344,7 @@ export default class Files extends View {
     if (this.edit && this.edit.folder === prefix && this.edit.kind !== "rename") out.push(this.editRow(depth, t));
     for (const entry of this.entries.get(prefix) ?? []) {
       if (out.length >= TOTAL) break;
-      const path = prefix ? `${prefix}/${entry.name}` : entry.name, open = this.folders.has(path), mark = this.marks[`${this.root}/${path}`];
+      const path = prefix ? `${prefix}/${entry.name}` : entry.name, absolute = `${this.root}/${path}`, open = this.folders.has(path), mark = this.marks[absolute];
       const kind = fileKind(entry.name, entry.dir, open);
       if (this.edit?.kind === "rename" && this.edit.folder === prefix && this.edit.original === entry.name) {
         out.push(this.editRow(depth, t));
@@ -352,7 +352,7 @@ export default class Files extends View {
         continue;
       }
       out.push(h_flex().id(`file-${path}`).h(28).flex_none().pl(8).pr(8).items_center().cursor_pointer().hover(s => s.bg(t.hover))
-        .drag_paths([`${this.root}/${path}`], { on: this.on ?? null })
+        .drag_paths([absolute], { on: this.on ?? null })
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openMenu(path, entry, cx); })
         .on_click((_e, cx) => { this.cancelEdit(); entry.dir ? this.toggle(path, cx) : isMarkdown(entry.name) ? this.openMarkdown(path) : this.show(path, cx); })
         .child(guides(depth, t))
