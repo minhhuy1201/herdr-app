@@ -5,7 +5,7 @@ import { spaces, panes, focused, exec, run, readTextFile, watchFolder, theme, se
 import { fileKind, isMarkdown } from "./file-kind.js";
 import { viewerTabs, decide, sync, normalisePath } from "./viewer-tabs.js";
 import { relativePath, validateName, duplicateName, renameSelection, moveTreePath, parentOf, baseName } from "./names.js";
-import { openDefaultCommand, newItemCommand, renameCommand, duplicateCommand, trashCommand } from "./commands.js";
+import { openDefaultCommand, newItemCommand, renameCommand, duplicateCommand, trashCommand, platformOf } from "./commands.js";
 
 function location() {
   const space = spaces().find(s => s.active), f = focused();
@@ -53,6 +53,7 @@ function guides(depth, t) {
 export default class Files extends View {
   init(_props, cx) {
     this.saved = new Map();
+    this.platforms = new Map();
     this.entries = new Map(); this.folders = new Set(); this.pending = new Set(); this.marks = {};
     this.refresh(cx);
     cx.timer.every(10000, cx => this.refresh(cx));
@@ -66,8 +67,8 @@ export default class Files extends View {
     const isRoot = path === "";
     const absolute = isRoot ? this.root : `${this.root}/${path}`;
     const dir = isRoot || Boolean(entry?.dir);
-    this.menuTarget = { path: absolute, dir, root: this.root, on: this.on, isRoot, open: isRoot || this.folders.has(path), platform: window()?.platform, rel: path };
-    const { rel, ...target } = this.menuTarget;
+    this.menuTarget = { path: absolute, dir, root: this.root, on: this.on, isRoot, open: isRoot || this.folders.has(path), platform: this.platform(), rel: path, context: this.context };
+    const { rel, context, ...target } = this.menuTarget;
     openOverlay({ mod: "my-menu", kind: "popup", frame: "none", width: 280, props: { tab: "file", target } });
   }
 
@@ -77,58 +78,72 @@ export default class Files extends View {
     if (name === "copy-path" || name === "copy-relative-path") {
       cx.write_to_clipboard(name === "copy-path" ? target.path : relativePath(target.root, target.path));
       notify({ title: "Copied path", level: "info" });
-    } else if (name === "collapse-all") this.collapse(target.rel);
+    } else if (name === "open-default") this.launch(openDefaultCommand(target.platform, target.path), target.on, cx);
+    else if (name === "trash") this.askTrash(target);
+    else if (name === "trash-confirmed") this.trash(cx);
+    // The rest act on the tree shown when the menu opened.
+    else if (!this.current(target.context)) return;
+    else if (name === "collapse-all") this.collapse(target.rel);
     else if (name === "new-file" || name === "new-folder") this.startEdit(name, target.rel, "", cx);
     else if (name === "rename") this.startEdit("rename", parentOf(target.rel), baseName(target.rel), cx, { original: baseName(target.rel), dir: target.dir });
     else if (name === "duplicate") this.duplicate(target, cx);
-    else if (name === "trash") this.askTrash(target);
-    else if (name === "trash-confirmed") this.trash(cx);
-    else if (name === "open-default") this.launch(openDefaultCommand(target.platform, target.path), target.on, cx);
   }
 
   // The dialog names the item; the confirmation acts on this copy, not on a later right-click's target.
   askTrash(target) {
     if (target.isRoot || !trashCommand(target.platform, target.path)) return;
     this.trashTarget = target;
-    openOverlay({ mod: "my-confirm", kind: "dialog", width: 380, height: 160, frame: "none", props: { title: `Move "${baseName(target.rel)}" to Trash?`, detail: "You can restore it from the system trash.", command: { name: "my-files.trash-confirmed" } } });
+    openOverlay({ mod: "my-confirm", kind: "dialog", width: 380, height: 160, frame: "none", props: { title: `Move "${baseName(target.rel)}" to Trash?`, detail: "You can restore it from the system trash.", confirm: "Move to Trash", command: { name: "my-files.trash-confirmed" } } });
   }
 
   trash(cx) {
     const target = this.trashTarget;
     this.trashTarget = null;
     if (!target) return;
-    const folder = parentOf(target.rel), name = baseName(target.rel);
-    const command = trashCommand(target.platform, target.path);
-    const context = this.context, on = this.on;
-    cx.spawn(async (cx) => {
-      const r = await exec(command.cmd, command.args, { on }).catch((e) => ({ code: 1, stderr: String(e?.message ?? e) }));
-      if (r.code !== 0) notify({ title: "Could not move " + name + " to Trash", body: (r.stderr || "").trim() || `exit ${r.code}`, level: "error" });
-      else if (this.current(context)) {
-        this.collapse(target.rel);
-        if (this.file && (this.file === target.rel || this.file.startsWith(target.rel + "/"))) this.show(null);
-      }
-      try { if (this.current(context)) await this.loadFolder(folder, context); } catch (e) { if (this.current(context)) this.error = String(e); }
-      cx.notify();
-    });
+    this.runChange(trashCommand(target.platform, target.path), target.context, parentOf(target.rel), "Could not move " + baseName(target.rel) + " to Trash", () => {
+      this.collapse(target.rel);
+      if (this.file && (this.file === target.rel || this.file.startsWith(target.rel + "/"))) this.show(null);
+    }, cx);
   }
 
   duplicate(target, cx) {
     const folder = parentOf(target.rel), original = baseName(target.rel);
     const name = duplicateName(original, target.dir, (this.entries.get(folder) ?? []).map((e) => e.name));
-    const command = duplicateCommand(parentOf(target.path), original, name);
-    const context = this.context, on = this.on;
+    this.runChange(duplicateCommand(parentOf(target.path), original, name), target.context, folder, "Could not duplicate " + original, null, cx);
+  }
+
+  launch(command, on, cx) {
+    cx.spawn(async () => { await this.exec(command, on, "Could not run " + command.cmd); });
+  }
+
+  async exec(command, on, failTitle) {
+    const r = await exec(command.cmd, command.args, { on }).catch((e) => ({ code: 1, stderr: String(e?.message ?? e) }));
+    if (r.code !== 0) notify({ title: failTitle, body: (r.stderr || "").trim() || `exit ${r.code}`, level: "error" });
+    return r.code === 0;
+  }
+
+  // Runs a change on the machine of `context`, then reloads `folder` if the panel still shows that context.
+  runChange(command, context, folder, failTitle, onDone, cx) {
     cx.spawn(async (cx) => {
-      const r = await exec(command.cmd, command.args, { on }).catch((e) => ({ code: 1, stderr: String(e?.message ?? e) }));
-      if (r.code !== 0) notify({ title: "Could not duplicate " + original, body: (r.stderr || "").trim() || `exit ${r.code}`, level: "error" });
+      const ok = await this.exec(command, context.on, failTitle);
+      if (ok && onDone && this.current(context)) onDone();
       try { if (this.current(context)) await this.loadFolder(folder, context); } catch (e) { if (this.current(context)) this.error = String(e); }
       cx.notify();
     });
   }
 
-  launch(command, on, cx) {
+  // The OS of the panel's machine; null while a remote machine's OS is still being asked.
+  platform() {
+    return this.on ? this.platforms.get(this.on) ?? null : window()?.platform;
+  }
+
+  askPlatform(on, cx) {
+    if (!on || this.platforms.has(on)) return;
+    this.platforms.set(on, null);
     cx.spawn(async (cx) => {
-      const r = await exec(command.cmd, command.args, { on }).catch((e) => ({ code: 1, stderr: String(e?.message ?? e) }));
-      if (r.code !== 0) notify({ title: "Could not run " + command.cmd, body: (r.stderr || "").trim() || `exit ${r.code}`, level: "error" });
+      const r = await exec("uname", ["-s"], { on }).catch(() => null);
+      this.platforms.set(on, platformOf(r));
+      cx.notify();
     });
   }
 
@@ -139,7 +154,7 @@ export default class Files extends View {
     this.cancelEdit();
     if (folder !== "" && !this.folders.has(folder)) this.toggle(folder, cx);
     const input = InputState.new({ value });
-    const edit = { kind, folder, input, error: null, armed: false, ...rename };
+    const edit = { kind, folder, input, error: null, armed: false, context: this.context, ...rename };
     const select = () => { if (kind === "rename") input.set_selected_range(renameSelection(value, Boolean(rename.dir))); };
     input.on("submit", (_e, cx) => this.submitEdit(edit, cx));
     // The menu popup closing takes focus back, so blur only cancels once the field has been focused again.
@@ -163,32 +178,16 @@ export default class Files extends View {
     if (renaming && name === edit.original) { this.cancelEdit(); cx.notify(); return; }
     const error = validateName(name, (this.entries.get(edit.folder) ?? []).map((e) => e.name));
     if (error) { edit.error = error; cx.notify(); return; }
-    const parent = edit.folder ? `${this.root}/${edit.folder}` : this.root;
-    if (renaming) { this.submitRename(edit, parent, name, cx); return; }
-    const command = newItemCommand(edit.kind === "new-folder" ? "folder" : "file", parent, name);
-    const context = this.context, on = this.on, folder = edit.folder;
+    const { context, folder, original } = edit;
+    const parent = folder ? `${context.cwd}/${folder}` : context.cwd;
     this.cancelEdit();
     cx.notify();
-    cx.spawn(async (cx) => {
-      const r = await exec(command.cmd, command.args, { on }).catch((e) => ({ code: 1, stderr: String(e?.message ?? e) }));
-      if (r.code !== 0) notify({ title: "Could not create " + name, body: (r.stderr || "").trim() || `exit ${r.code}`, level: "error" });
-      try { if (this.current(context)) await this.loadFolder(folder, context); } catch (e) { if (this.current(context)) this.error = String(e); }
-      cx.notify();
-    });
-  }
-
-  submitRename(edit, parent, name, cx) {
-    const command = renameCommand(parent, edit.original, name);
-    const context = this.context, on = this.on, folder = edit.folder, original = edit.original;
-    this.cancelEdit();
-    cx.notify();
-    cx.spawn(async (cx) => {
-      const r = await exec(command.cmd, command.args, { on }).catch((e) => ({ code: 1, stderr: String(e?.message ?? e) }));
-      if (r.code !== 0) notify({ title: "Could not rename " + original, body: (r.stderr || "").trim() || `exit ${r.code}`, level: "error" });
-      else if (this.current(context)) this.moveState(folder ? `${folder}/${original}` : original, folder ? `${folder}/${name}` : name);
-      try { if (this.current(context)) await this.loadFolder(folder, context); } catch (e) { if (this.current(context)) this.error = String(e); }
-      cx.notify();
-    });
+    if (renaming) {
+      this.runChange(renameCommand(parent, original, name), context, folder, "Could not rename " + original,
+        () => this.moveState(folder ? `${folder}/${original}` : original, folder ? `${folder}/${name}` : name), cx);
+      return;
+    }
+    this.runChange(newItemCommand(edit.kind === "new-folder" ? "folder" : "file", parent, name), context, folder, "Could not create " + name, null, cx);
   }
 
   moveState(from, to) {
@@ -246,11 +245,13 @@ export default class Files extends View {
     if (next !== this.context?.key) {
       if (this.context) this.saved.set(this.context.key, { folders: this.folders, file: this.file });
       const saved = this.saved.get(next);
+      this.cancelEdit();
       this.context = { key: next, cwd, on }; this.root = cwd; this.on = on; this.entries = new Map(); this.folders = new Set(saved?.folders);
       this.pending = new Set(); this.marks = {}; this.show(null); this.watched = null; this.error = null; this.limited = false;
       this.loading = false;
       if (saved?.file) this.show(saved.file, cx);
     }
+    this.askPlatform(on, cx);
     if (!cwd || this.loading) return;
     const context = this.context;
     this.loading = true;

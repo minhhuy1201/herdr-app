@@ -130,3 +130,12 @@ test("macos trash asks Finder over osascript, the path as an argument", () => {
 test("windows has no trash command", () => {
   assert.equal(trashCommand("windows", "C:/a"), null);
 });
+
+import { platformOf } from "../commands.js";
+test("platformOf maps uname output and treats a failed uname as Windows", () => {
+  assert.equal(platformOf({ code: 0, stdout: "Linux\n" }), "linux");
+  assert.equal(platformOf({ code: 0, stdout: "Darwin\n" }), "macos");
+  assert.equal(platformOf({ code: 1, stdout: "" }), "windows");
+  assert.equal(platformOf(null), "windows");
+  assert.equal(platformOf({ code: 0, stdout: "FreeBSD\n" }), null);
+});

@@ -48,7 +48,7 @@ export default class Confirm extends View {
           .gap(8)
           .text_size(12)
           .child(button("no", "Cancel", t.raised, t.foreground, () => closeOverlay(props().overlay)))
-          .child(button("yes", "Confirm", t.solid, t.solid_foreground, () => this.yes())),
+          .child(button("yes", p.confirm ?? "Confirm", t.solid, t.solid_foreground, () => this.yes())),
       );
   }
 }

@@ -75,8 +75,10 @@ function items(p, git) {
   }
 }
 
+const FILE_ICONS = { "my-files.trash": "x", "my-files.collapse-all": "minus", "my-files.new-file": "plus", "my-files.new-folder": "folder-plus" };
+
 function menuIcon(command) {
-  if (command.startsWith("my-files.")) return `mods/workspace-chrome/${command === "my-files.trash" ? "x" : command === "my-files.collapse-all" ? "minus" : command === "my-files.new-file" ? "plus" : command === "my-files.new-folder" ? "folder-plus" : "file-text"}.svg`;
+  if (command.startsWith("my-files.")) return `mods/workspace-chrome/${FILE_ICONS[command] ?? "file-text"}.svg`;
   const name = command.endsWith(".close") ? "x" : command.endsWith(".rename") ? "square-pen" : command.endsWith(".new") ? "plus" : command === "worktree" ? "git-branch" : command === "app.help" ? "terminal" : command === "app.theme" ? "settings" : command === "pane.split" ? "panel-right" : command === "pane.zoom" ? "square" : "terminal";
   return `mods/workspace-chrome/${name}.svg`;
 }

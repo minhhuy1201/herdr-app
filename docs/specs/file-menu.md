@@ -16,7 +16,7 @@ The menu has these items, in groups, and hides the ones that do not apply:
 - New File…, New Folder… (folders and the Panel root only: the new item goes inside)
 - Copy Path, Copy Relative Path (relative to the Panel root)
 - Rename…, Duplicate, Move to Trash (not for the Panel root)
-- Collapse All (open folders only)
+- Collapse All (open folders and the Panel root)
 
 Rename and New ask for the name inline, in the tree row, like Zed. Move to Trash asks first. The tree updates by itself after every change.
 
@@ -83,6 +83,7 @@ The menu shows only the items that apply to the item (see Solution), so not ever
 33. As a person, I want a failed action (no `gio` on a remote machine, a permission error) to show an error notification with the command's message, so that I know why nothing changed.
 34. As a person, I want successful changes to show no notification and the tree to update at once, so that the panel stays quiet.
 35. As a Windows person, I want the items that change files (New, Rename, Duplicate, Move to Trash) hidden, so that I do not get actions that are not built there yet.
+35a. As a person on a space on another machine, I want the items that change files to use that machine's OS, not my window's, so that Move to Trash runs the right program there.
 36. As a person whose Markdown viewer tab shows a file I rename or trash, I want that tab to keep today's behaviour ("This file is no longer available"), so that nothing surprising happens.
 
 ## Implementation Decisions
@@ -90,7 +91,7 @@ The menu shows only the items that apply to the item (see Solution), so not ever
 - **The menu is `my-menu` with a new `file` kind.** `my-files` opens `my-menu` as a pointer popup (`frame: "none"`, as the space and tab menus do) with props `{ tab: "file", target: { path, dir, root, on, isRoot, open, platform } }`. `my-menu` builds the item list from the target. Each item's command is a mod command, `my-files.<action>`, which Herdr delivers to `my-files`'s `nextCommand()`. This reuses the existing menu look and keyboard handling, and needs no new state channel: `my-files` keeps the right-clicked target until the next right-click.
 - **`my-files` runs every action.** It listens on `nextCommand()` for `copy-path`, `copy-relative-path`, `open-default`, `new-file`, `new-folder`, `rename`, `duplicate`, `trash`, `trash-confirmed` and `collapse-all`, and acts on the kept target. Clipboard writes use `cx.write_to_clipboard`. Program runs use `exec(..., { on })`, so a remote space's changes run on its machine.
 - **Pure modules, no Herdr imports.** *Menu items* lives in `my-menu` (`mods/my-menu/menu-items.js`), its only user: a mod cannot import from another mod's folder (`herdr-app check` rejects it as "resolves outside the application directory"). *Names* and *commands* live beside `my-files`.
-  - *menu items*: given the target, returns the ordered item list with group breaks. It applies the visibility rules: local-only items, folder-only items, root rules, write items hidden on Windows, Collapse All only for open folders.
+  - *menu items*: given the target, returns the ordered item list with group breaks. It applies the visibility rules: local-only items, folder-only items, root rules, write items shown only on Linux and macOS (on a remote space, its machine's OS, asked once with `uname -s`; hidden until known), Collapse All only for open folders and the Panel root.
   - *names*: the relative path from the Panel root; the next free duplicate name given a name and the folder's existing names; name validation (empty, `/`, `.`, `..`, taken) returning an error message or none.
   - *commands*: for each action and platform, the program and arguments to run. Open in Default App reuses the Markdown viewer's opener rule (`xdg-open`, `open`, `rundll32 url.dll,FileProtocolHandler`). Trash is `gio trash` on Linux and a Finder `osascript` call on macOS. File changes go through `sh` with paths as positional arguments, never spliced into the script. New and Rename refuse to overwrite: they fail if the target exists, even if it appeared after validation.
 - **Inline name field.** One edit at a time, held by `my-files`: `{ kind: "new-file" | "new-folder" | "rename", folder, original? , error? }`. The field is a `gpui-base` `Input` in the tree row (rename) or a new row at the top of the folder's children (new). Enter validates, then runs the command; Esc or focus loss cancels. A new edit cancels any open one.

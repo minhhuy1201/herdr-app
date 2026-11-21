@@ -68,3 +68,9 @@ test("Move to Trash is the last item of the change group, with its command", () 
   assert.ok(!labels({ ...base, isRoot: true, dir: true }).includes("Move to Trash"));
   assert.ok(!labels({ ...base, platform: "windows" }).includes("Move to Trash"));
 });
+test("a remote target whose OS is not known yet hides the write items", () => {
+  assert.deepEqual(labels({ ...base, dir: true, on: "vps", platform: null }), [...COPY]);
+});
+test("a remote macOS target keeps the write items", () => {
+  assert.deepEqual(labels({ ...base, on: "mac", platform: "macos" }), [...COPY, ...CHANGE]);
+});

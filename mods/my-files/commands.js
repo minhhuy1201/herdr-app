@@ -33,6 +33,14 @@ export function duplicateCommand(parent, from, to) {
 
 // Moves `path` to the system trash; null where there is none (Windows hides the item).
 // A leading dash is safe: gio takes the path after `--`, osascript takes it as an argument.
+// The OS of a remote machine from `uname -s`; uname failing to start means Windows.
+// Another Unix gives null, so the menu hides the items that need a known OS.
+export function platformOf(r) {
+  if (!r || r.code !== 0) return "windows";
+  const os = r.stdout.trim();
+  return os === "Linux" ? "linux" : os === "Darwin" ? "macos" : null;
+}
+
 export function trashCommand(platform, path) {
   if (platform === "macos") return { cmd: "osascript", args: ["-e", "on run argv", "-e", 'tell application "Finder" to delete (POSIX file (item 1 of argv) as alias)', "-e", "end run", path] };
   if (platform === "windows") return null;
