@@ -4,16 +4,17 @@ Some files here are copies of files that Herdr ships. Herdr updates its own file
 
 ## Forks
 
-All forks were made from Herdr **0.1.13**. An exact copy of each source file at that version is in `docs/upstream/0.1.13/`.
+Forks were made from Herdr **0.1.13** unless their row names another version. An exact copy of each source file at its fork version is in `docs/upstream/<version>/`.
 
 | Fork | Herdr source | What the fork changes |
 | --- | --- | --- |
 | `layouts/better-main.json` | `layouts/main.json` | Flat look: no borders, gaps or rounded pane frames. Uses the `my-*` and `better-*` mods. Sets `"terminal_menu": "my-menu"`. |
 | `mods/my-tabs/` | `mods/tabs/` | Flat text tabs underlined in the accent color, and side panel toggles. Right-clicking a tab opens `my-menu` with `frame: "none"` (`main.js:84`). Markdown icon and file name for `md-viewer` tabs. |
-| `mods/my-files/` | `mods/files/` | Material file icons. Markdown files open in an `md-viewer` tab. |
+| `mods/my-files/` | `mods/files/` | Material file icons. Markdown files open in an `md-viewer` tab. Right-clicking a row, the empty tree space or the title opens `my-menu` with the `file` kind and `frame: "none"` (`main.js` `openMenu`). |
 | `mods/my-palette/` | `frame/palette/` | Command palette. Square corners, no Herdr frame, opens as a centered dialog (`mod.json`). "Go to space or tab…" opens `my-picker`. |
 | `mods/my-picker/` | `mods/picker/` | "Go to…" picker. Square corners, no Herdr frame, opens as a centered dialog. No title row; the search row has a bottom border. |
-| `mods/my-menu/` | `mods/menu/` | Right-click menu. Square corners, no Herdr frame (`mod.json` `overlay.frame`), 1px border. Long labels wrap instead of being cut: rows use `min_h(31)` instead of `h(31)`, and the shortcut is `flex_none`. |
+| `mods/my-menu/` | `mods/menu/` | Right-click menu. Square corners, no Herdr frame (`mod.json` `overlay.frame`), 1px border. Long labels wrap instead of being cut: rows use `min_h(31)` instead of `h(31)`, and the shortcut is `flex_none`. New `file` kind: its items come from `menu-items.js` and run `my-files.<action>` mod commands; items carry a group in `it[3]` and a separator shows where the group changes. |
+| `mods/my-confirm/` | `mods/confirm/` | Confirm dialog. Square corners, 1px border, no Herdr frame (`mod.json` `overlay.frame`). Forked at Herdr **0.1.16**; its source copy is in `docs/upstream/0.1.16/mods/confirm/`. `my-files` opens it for Move to Trash with `command: { name: "my-files.trash-confirmed" }` (`main.js` `askTrash`). |
 | `mods/my-status/` | `mods/workspace-status/` | Status bar. A click opens `my-palette`, and the key hint reads the `mod.open:my-palette` binding (`main.js:11`, `main.js:29`). |
 
 `mods/better-sidebar/`, `mods/better-changes/` and `mods/git-graph/` have no `cloned_from` field. Their Herdr sources and versions are not recorded, so they are not tracked here.
@@ -25,6 +26,8 @@ If Herdr renames a command or changes how an overlay opens, check these:
 - `keys.json`: `ctrl-shift-p` is `mod.open:my-palette` (Herdr's default is `app.palette`), and `ctrl-shift-k` is `mod.open:my-picker` (Herdr's default is `mod.open:picker`).
 - `mods/better-sidebar/views/spaces.js` `menu()`: right-clicking a space opens `my-menu` with `frame: "none"`.
 - `mods/my-tabs/main.js:84`: right-clicking a tab opens `my-menu` with `frame: "none"`.
+- `mods/my-files/main.js` `askTrash()`: opens `my-confirm` for Move to Trash.
+- `mods/my-files/main.js` `openMenu()`: right-clicking a Files row, the empty tree space or the title opens `my-menu` with `tab: "file"` and `frame: "none"`.
 
 These Herdr screens still use Herdr's own look. Nothing here replaces them:
 
@@ -80,6 +83,7 @@ To go back to Herdr's version, point the caller back to Herdr's source, then del
 - `my-palette`: in `keys.json`, set `ctrl-shift-p` to `app.palette`.
 - `my-picker`: in `keys.json`, set `ctrl-shift-k` to `mod.open:picker`. In `my-palette/main.js`, set the "Go to space or tab…" entry to `{ name: "picker" }`.
 - `my-menu`: remove `"terminal_menu"` from `layouts/better-main.json`. Set `mod: "menu"` in `my-tabs/main.js:84` and in `better-sidebar/views/spaces.js` `menu()`.
+- `my-confirm`: in `my-files/main.js` `askTrash()`, set `mod` to `confirm` and drop `frame`.
 - `my-status`: in `layouts/better-main.json`, set the status bar block's `mod` to `workspace-status`.
 
 `ctrl-alt-shift-escape` always resets the window to Herdr's `main` layout when something breaks.
