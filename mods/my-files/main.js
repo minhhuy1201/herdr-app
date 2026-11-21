@@ -42,6 +42,14 @@ async function directory(path, on) {
   return out;
 }
 
+const INDENT = 16;
+
+// One column per ancestor folder, each with a vertical line under that folder's icon.
+function guides(depth, t) {
+  return h_flex().flex_none().h_full().children(Array.from({ length: depth }, (_, i) =>
+    div().w(INDENT).h_full().flex_none().child(div().ml(7).w(1).h_full().bg(t.border))));
+}
+
 export default class Files extends View {
   init(_props, cx) {
     this.saved = new Map();
@@ -196,13 +204,13 @@ export default class Files extends View {
 
   editRow(depth, t) {
     const edit = this.edit;
-    return v_flex().id("files-edit").flex_none().pl(8 + depth * 18).pr(8).py(2)
+    return v_flex().id("files-edit").flex_none()
       .on_key_down((e, cx) => { if (e.key === "escape") { this.cancelEdit(); cx.stop_propagation(); cx.notify(); } })
-      .child(h_flex().h(24).gap(7).items_center()
-        .child(div().w(12).flex_none())
-        .child(edit.kind === "new-folder" || edit.dir ? image("mods/my-files/icons/material/folder.svg").size(16).flex_none() : image("mods/my-files/icons/material/file.svg").size(16).flex_none())
+      .child(h_flex().h(28).pl(8).pr(8).items_center()
+        .child(guides(depth, t))
+        .child((edit.kind === "new-folder" || edit.dir ? image("mods/my-files/icons/material/folder.svg") : image("mods/my-files/icons/material/file.svg")).size(16).flex_none().mr(7))
         .child(Input.new(edit.input).flex_1().min_w(0).h(24).px(6).border_1().border_color(edit.error ? t.ansi1 : t.accent).bg(t.background).text_size(13).text_color(t.foreground)))
-      .when(Boolean(edit.error), el => el.child(div().pl(35).pt(2).text_size(11).text_color(t.ansi1).child(edit.error)));
+      .when(Boolean(edit.error), el => el.child(div().pl(8 + depth * INDENT + 23).pb(2).text_size(11).text_color(t.ansi1).child(edit.error)));
   }
 
   // Closes a folder and every folder inside it; "" is the Panel root.
@@ -343,13 +351,13 @@ export default class Files extends View {
         if (entry.dir && open) this.rows(path, depth + 1, out, t);
         continue;
       }
-      out.push(h_flex().id(`file-${path}`).h(28).flex_none().pl(8 + depth * 18).pr(8).gap(7).items_center().cursor_pointer().hover(s => s.bg(t.hover))
+      out.push(h_flex().id(`file-${path}`).h(28).flex_none().pl(8).pr(8).items_center().cursor_pointer().hover(s => s.bg(t.hover))
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openMenu(path, entry, cx); })
         .on_click((_e, cx) => { this.cancelEdit(); entry.dir ? this.toggle(path, cx) : isMarkdown(entry.name) ? this.openMarkdown(path) : this.show(path, cx); })
-        .child(entry.dir ? svg(`mods/my-files/icons/chevron-${open ? "down" : "right"}.svg`).size(12).flex_none().text_color(t.dim) : div().w(12).flex_none())
-        .child(image(`mods/my-files/icons/material/${kind}.svg`).size(16).flex_none())
+        .child(guides(depth, t))
+        .child(image(`mods/my-files/icons/material/${kind}.svg`).size(16).flex_none().mr(7))
         .child(div().flex_1().min_w(0).truncate().child(entry.name))
-        .when(Boolean(mark), el => el.child(div().flex_none().text_size(11).text_color(mark === "A" ? t.ansi2 : mark === "D" ? t.ansi1 : t.ansi3).child(mark))));
+        .when(Boolean(mark), el => el.child(div().flex_none().ml(7).text_size(11).text_color(mark === "A" ? t.ansi2 : mark === "D" ? t.ansi1 : t.ansi3).child(mark))));
       if (entry.dir && open) this.rows(path, depth + 1, out, t);
     }
     return out;
