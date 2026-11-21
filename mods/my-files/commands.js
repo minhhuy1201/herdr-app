@@ -1,13 +1,6 @@
 // Programs behind the File menu's actions. No Herdr imports, so node --test runs them.
 // Each returns { cmd, args }.
 
-export function parentFolder(path) {
-  const i = path.replace(/\/+$/, "").lastIndexOf("/");
-  return i <= 0 ? "/" : path.slice(0, i);
-}
-
-export const terminalFolder = (path, dir) => (dir ? path : parentFolder(path));
-
 // Copied from md-viewer's links.js: a mod cannot import another mod's folder.
 export function openDefaultCommand(platform, path) {
   if (platform === "macos") return { cmd: "open", args: [path] };

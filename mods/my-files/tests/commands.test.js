@@ -1,19 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { openDefaultCommand, parentFolder, terminalFolder, trashCommand } from "../commands.js";
+import { openDefaultCommand, trashCommand } from "../commands.js";
 
 test("open-default follows the markdown viewer's opener rule", () => {
   assert.deepEqual(openDefaultCommand("linux", "/a b/é.pdf"), { cmd: "xdg-open", args: ["/a b/é.pdf"] });
   assert.deepEqual(openDefaultCommand("macos", "/a"), { cmd: "open", args: ["/a"] });
   assert.deepEqual(openDefaultCommand("windows", "C:\\a&b.txt"), { cmd: "rundll32", args: ["url.dll,FileProtocolHandler", "C:\\a&b.txt"] });
-});
-test("parentFolder", () => {
-  assert.equal(parentFolder("/a/b/c.txt"), "/a/b");
-  assert.equal(parentFolder("/c.txt"), "/");
-});
-test("terminal folder is the folder itself, or a file's parent", () => {
-  assert.equal(terminalFolder("/a/b", true), "/a/b");
-  assert.equal(terminalFolder("/a/b/c.txt", false), "/a/b");
 });
 
 import { newItemCommand } from "../commands.js";

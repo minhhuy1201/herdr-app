@@ -12,7 +12,7 @@ A right-click on a file or folder in the Files panel opens the **File menu**: a 
 
 The menu has these items, in groups, and hides the ones that do not apply:
 
-- Open in Default App (this computer only), Open in Terminal
+- Open in Default App (this computer only)
 - New File…, New Folder… (folders and the Panel root only: the new item goes inside)
 - Copy Path, Copy Relative Path (relative to the Panel root)
 - Rename…, Duplicate, Move to Trash (not for the Panel root)
@@ -33,7 +33,6 @@ flowchart LR
     rootMenu --> pick
     pick -->|"Copy Path / Copy Relative Path"| clip["Clipboard + 'Copied path' toast"]:::new
     pick -->|"Open in Default App"| system["System app"]:::new
-    pick -->|"Open in Terminal"| tab["New tab, shell in that folder"]:::new
     pick -->|"Rename… / New File… / New Folder…"| field["Inline name field in tree"]:::new
     pick -->|"Duplicate"| change["Change on disk"]:::new
     pick -->|"Move to Trash"| confirm{"Confirm dialog"}:::new
@@ -64,7 +63,7 @@ The menu shows only the items that apply to the item (see Solution), so not ever
 10-13. Removed: Reveal in File Manager was dropped after use. On folders it did almost the same as Open in Default App, which is the one the person needs.
 14. As a person, I want "Open in Default App" to open the item with the program my system uses for it, so that I can open a PDF or an image from the tree.
 15. As a person working in a space on another machine, I want Open in Default App to be hidden, so that I do not get actions that cannot work on that machine.
-16. As a person, I want "Open in Terminal" to open a new tab in the current space with a shell in that folder (the parent folder for a file), so that I can run commands there at once.
+16. Removed: Open in Terminal was dropped at the person's request.
 17. As a person, I want "New File…" on a folder to open the folder and show an empty name field at the top of its children, so that I type the name where the file will appear.
 18. As a person, I want "New Folder…" to work the same way and make a folder, so that both are one gesture.
 19. As a person, I want Enter in the name field to make the item and Esc or a click elsewhere to cancel, so that the field behaves like Zed's.
@@ -89,7 +88,7 @@ The menu shows only the items that apply to the item (see Solution), so not ever
 ## Implementation Decisions
 
 - **The menu is `my-menu` with a new `file` kind.** `my-files` opens `my-menu` as a pointer popup (`frame: "none"`, as the space and tab menus do) with props `{ tab: "file", target: { path, dir, root, on, isRoot, open, platform } }`. `my-menu` builds the item list from the target. Each item's command is a mod command, `my-files.<action>`, which Herdr delivers to `my-files`'s `nextCommand()`. This reuses the existing menu look and keyboard handling, and needs no new state channel: `my-files` keeps the right-clicked target until the next right-click.
-- **`my-files` runs every action.** It listens on `nextCommand()` for `copy-path`, `copy-relative-path`, `open-default`, `open-terminal`, `new-file`, `new-folder`, `rename`, `duplicate`, `trash`, `trash-confirmed` and `collapse-all`, and acts on the kept target. Clipboard writes use `cx.write_to_clipboard`. Program runs use `exec(..., { on })`, so a remote space's changes run on its machine.
+- **`my-files` runs every action.** It listens on `nextCommand()` for `copy-path`, `copy-relative-path`, `open-default`, `new-file`, `new-folder`, `rename`, `duplicate`, `trash`, `trash-confirmed` and `collapse-all`, and acts on the kept target. Clipboard writes use `cx.write_to_clipboard`. Program runs use `exec(..., { on })`, so a remote space's changes run on its machine.
 - **Pure modules, no Herdr imports.** *Menu items* lives in `my-menu` (`mods/my-menu/menu-items.js`), its only user: a mod cannot import from another mod's folder (`herdr-app check` rejects it as "resolves outside the application directory"). *Names* and *commands* live beside `my-files`.
   - *menu items*: given the target, returns the ordered item list with group breaks. It applies the visibility rules: local-only items, folder-only items, root rules, write items hidden on Windows, Collapse All only for open folders.
   - *names*: the relative path from the Panel root; the next free duplicate name given a name and the folder's existing names; name validation (empty, `/`, `.`, `..`, taken) returning an error message or none.

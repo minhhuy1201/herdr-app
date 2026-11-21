@@ -5,7 +5,7 @@ import { fileMenuItems } from "../menu-items.js";
 const labels = (t) => fileMenuItems(t).map((i) => i.label);
 const base = { dir: false, isRoot: false, open: false, on: null, platform: "linux" };
 
-const OPEN = ["Open in Default App", "Open in Terminal"];
+const OPEN = ["Open in Default App"];
 const NEW = ["New File…", "New Folder…"];
 const COPY = ["Copy Path", "Copy Relative Path"];
 const CHANGE = ["Rename…", "Duplicate", "Move to Trash"];
@@ -27,10 +27,10 @@ test("the Panel root counts as open", () => {
 });
 test("commands are my-files mod commands", () => {
   assert.deepEqual(fileMenuItems(base).map((i) => i.command),
-    ["my-files.open-default", "my-files.open-terminal", "my-files.copy-path", "my-files.copy-relative-path", "my-files.rename", "my-files.duplicate", "my-files.trash"]);
+    ["my-files.open-default", "my-files.copy-path", "my-files.copy-relative-path", "my-files.rename", "my-files.duplicate", "my-files.trash"]);
 });
 test("a remote target hides Open in Default App", () => {
-  assert.deepEqual(labels({ ...base, on: "vps" }), ["Open in Terminal", ...COPY, ...CHANGE]);
+  assert.deepEqual(labels({ ...base, on: "vps" }), [...COPY, ...CHANGE]);
 });
 test("a Windows target keeps the open group", () => {
   assert.deepEqual(labels({ ...base, platform: "windows" }), [...OPEN, ...COPY]);
@@ -41,7 +41,7 @@ test("New items only on folders, with their commands", () => {
   assert.ok(!labels(base).includes("New File…"));
 });
 test("a remote folder keeps the New items", () => {
-  assert.deepEqual(labels({ ...base, dir: true, on: "vps" }), ["Open in Terminal", ...NEW, ...COPY, ...CHANGE]);
+  assert.deepEqual(labels({ ...base, dir: true, on: "vps" }), [...NEW, ...COPY, ...CHANGE]);
 });
 test("Windows hides the New items", () => {
   assert.deepEqual(labels({ ...base, dir: true, platform: "windows" }), [...OPEN, ...COPY]);

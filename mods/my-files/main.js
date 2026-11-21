@@ -5,7 +5,7 @@ import { spaces, panes, focused, exec, run, readTextFile, watchFolder, theme, se
 import { fileKind, isMarkdown } from "./file-kind.js";
 import { viewerTabs, decide, sync, normalisePath } from "./viewer-tabs.js";
 import { relativePath, validateName, duplicateName, renameSelection, moveTreePath, parentOf, baseName } from "./names.js";
-import { openDefaultCommand, terminalFolder, newItemCommand, renameCommand, duplicateCommand, trashCommand } from "./commands.js";
+import { openDefaultCommand, newItemCommand, renameCommand, duplicateCommand, trashCommand } from "./commands.js";
 
 function location() {
   const space = spaces().find(s => s.active), f = focused();
@@ -66,8 +66,8 @@ export default class Files extends View {
     const isRoot = path === "";
     const absolute = isRoot ? this.root : `${this.root}/${path}`;
     const dir = isRoot || Boolean(entry?.dir);
-    this.menuTarget = { path: absolute, dir, root: this.root, on: this.on, isRoot, open: isRoot || this.folders.has(path), platform: window()?.platform, rel: path, space: location().space };
-    const { rel, space, ...target } = this.menuTarget;
+    this.menuTarget = { path: absolute, dir, root: this.root, on: this.on, isRoot, open: isRoot || this.folders.has(path), platform: window()?.platform, rel: path };
+    const { rel, ...target } = this.menuTarget;
     openOverlay({ mod: "my-menu", kind: "popup", frame: "none", width: 280, props: { tab: "file", target } });
   }
 
@@ -78,7 +78,6 @@ export default class Files extends View {
       cx.write_to_clipboard(name === "copy-path" ? target.path : relativePath(target.root, target.path));
       notify({ title: "Copied path", level: "info" });
     } else if (name === "collapse-all") this.collapse(target.rel);
-    else if (name === "open-terminal") run("tab.new", { space: target.space, folder: terminalFolder(target.path, target.dir) });
     else if (name === "new-file" || name === "new-folder") this.startEdit(name, target.rel, "", cx);
     else if (name === "rename") this.startEdit("rename", parentOf(target.rel), baseName(target.rel), cx, { original: baseName(target.rel), dir: target.dir });
     else if (name === "duplicate") this.duplicate(target, cx);
