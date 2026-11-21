@@ -352,6 +352,7 @@ export default class Files extends View {
         continue;
       }
       out.push(h_flex().id(`file-${path}`).h(28).flex_none().pl(8).pr(8).items_center().cursor_pointer().hover(s => s.bg(t.hover))
+        .drag_paths([`${this.root}/${path}`], { on: this.on ?? null })
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openMenu(path, entry, cx); })
         .on_click((_e, cx) => { this.cancelEdit(); entry.dir ? this.toggle(path, cx) : isMarkdown(entry.name) ? this.openMarkdown(path) : this.show(path, cx); })
         .child(guides(depth, t))
