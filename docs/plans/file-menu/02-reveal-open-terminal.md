@@ -17,6 +17,8 @@ Context for a cold start:
 
 **Status:** done (app check pending)
 
+**Changed after build:** Reveal in File Manager was removed at the person's request (on folders it did almost the same as Open in Default App). The Reveal criteria below describe the first build only.
+
 - [x] A pure *commands* module returns `{ cmd, args }` for reveal (with its Linux fallback), open-default, per platform. Tests assert each platform's program and arguments, including a path with spaces and non-ASCII characters in the Linux URI.
 - [x] The *menu items* module adds the group in the spec's order and hides Reveal and Open in Default App when `on` is set. Tests cover local and remote targets.
 - [x] Reveal selects the item in the file manager on Linux; when D-Bus fails, the parent folder opens instead.

@@ -1,26 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { revealCommand, openDefaultCommand, parentFolder, terminalFolder, trashCommand } from "../commands.js";
+import { openDefaultCommand, parentFolder, terminalFolder, trashCommand } from "../commands.js";
 
-const DBUS = ["call", "--session", "--dest", "org.freedesktop.FileManager1", "--object-path", "/org/freedesktop/FileManager1", "--method", "org.freedesktop.FileManager1.ShowItems"];
-
-test("linux reveal asks the file manager over D-Bus, falling back to the parent folder", () => {
-  assert.deepEqual(revealCommand("linux", "/home/a/b.txt"), {
-    cmd: "gdbus", args: [...DBUS, "['file:///home/a/b.txt']", ""],
-    fallback: { cmd: "xdg-open", args: ["/home/a"] },
-  });
-});
-test("linux reveal percent-encodes spaces, non-ASCII and quotes in the URI", () => {
-  const r = revealCommand("linux", "/home/a/my dir/tệp 'x'.txt");
-  assert.equal(r.args[DBUS.length], "['file:///home/a/my%20dir/t%E1%BB%87p%20%27x%27.txt']");
-  assert.deepEqual(r.fallback.args, ["/home/a/my dir"]);
-});
-test("macos reveal is open -R", () => {
-  assert.deepEqual(revealCommand("macos", "/Users/a/b c.txt"), { cmd: "open", args: ["-R", "/Users/a/b c.txt"] });
-});
-test("windows reveal selects in explorer and ignores its exit code", () => {
-  assert.deepEqual(revealCommand("windows", "C:/Users/a/b c.txt"), { cmd: "explorer", args: ["/select,C:\\Users\\a\\b c.txt"], ignoreCode: true });
-});
 test("open-default follows the markdown viewer's opener rule", () => {
   assert.deepEqual(openDefaultCommand("linux", "/a b/é.pdf"), { cmd: "xdg-open", args: ["/a b/é.pdf"] });
   assert.deepEqual(openDefaultCommand("macos", "/a"), { cmd: "open", args: ["/a"] });

@@ -5,7 +5,7 @@ import { fileMenuItems } from "../menu-items.js";
 const labels = (t) => fileMenuItems(t).map((i) => i.label);
 const base = { dir: false, isRoot: false, open: false, on: null, platform: "linux" };
 
-const OPEN = ["Open in Default App", "Reveal in File Manager", "Open in Terminal"];
+const OPEN = ["Open in Default App", "Open in Terminal"];
 const NEW = ["New File…", "New Folder…"];
 const COPY = ["Copy Path", "Copy Relative Path"];
 const CHANGE = ["Rename…", "Duplicate", "Move to Trash"];
@@ -19,23 +19,17 @@ test("a closed folder gets New items but no Collapse All", () => {
 test("an open folder gets Collapse All last, in its own group", () => {
   const items = fileMenuItems({ ...base, dir: true, open: true });
   assert.deepEqual(items.map((i) => i.label), [...OPEN, ...NEW, ...COPY, ...CHANGE, "Collapse All"]);
-  assert.notEqual(items[10].group, items[9].group);
-  assert.notEqual(items[7].group, items[6].group);
-  assert.equal(items[7].group, items[9].group);
-  assert.equal(items[5].group, items[6].group);
-  assert.notEqual(items[3].group, items[5].group);
-  assert.equal(items[3].group, items[4].group);
-  assert.notEqual(items[0].group, items[3].group);
-  assert.equal(items[0].group, items[2].group);
+  const runs = items.map((i) => i.group).filter((g, i, all) => g !== all[i - 1]);
+  assert.deepEqual(runs, ["open", "new", "copy", "change", "fold"]);
 });
 test("the Panel root counts as open", () => {
   assert.deepEqual(labels({ ...base, dir: true, isRoot: true }), [...OPEN, ...NEW, ...COPY, "Collapse All"]);
 });
 test("commands are my-files mod commands", () => {
   assert.deepEqual(fileMenuItems(base).map((i) => i.command),
-    ["my-files.open-default", "my-files.reveal", "my-files.open-terminal", "my-files.copy-path", "my-files.copy-relative-path", "my-files.rename", "my-files.duplicate", "my-files.trash"]);
+    ["my-files.open-default", "my-files.open-terminal", "my-files.copy-path", "my-files.copy-relative-path", "my-files.rename", "my-files.duplicate", "my-files.trash"]);
 });
-test("a remote target hides Reveal and Open in Default App", () => {
+test("a remote target hides Open in Default App", () => {
   assert.deepEqual(labels({ ...base, on: "vps" }), ["Open in Terminal", ...COPY, ...CHANGE]);
 });
 test("a Windows target keeps the open group", () => {

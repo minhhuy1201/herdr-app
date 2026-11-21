@@ -12,7 +12,7 @@ A right-click on a file or folder in the Files panel opens the **File menu**: a 
 
 The menu has these items, in groups, and hides the ones that do not apply:
 
-- Open in Default App, Reveal in File Manager (this computer only), Open in Terminal
+- Open in Default App (this computer only), Open in Terminal
 - New File…, New Folder… (folders and the Panel root only: the new item goes inside)
 - Copy Path, Copy Relative Path (relative to the Panel root)
 - Rename…, Duplicate, Move to Trash (not for the Panel root)
@@ -32,7 +32,7 @@ flowchart LR
     menu --> pick{"Item chosen"}:::new
     rootMenu --> pick
     pick -->|"Copy Path / Copy Relative Path"| clip["Clipboard + 'Copied path' toast"]:::new
-    pick -->|"Reveal / Open in Default App"| system["System file manager or app"]:::new
+    pick -->|"Open in Default App"| system["System app"]:::new
     pick -->|"Open in Terminal"| tab["New tab, shell in that folder"]:::new
     pick -->|"Rename… / New File… / New Folder…"| field["Inline name field in tree"]:::new
     pick -->|"Duplicate"| change["Change on disk"]:::new
@@ -61,12 +61,9 @@ The menu shows only the items that apply to the item (see Solution), so not ever
 7. As a person, I want "Copy Path" to put the item's absolute path on the clipboard, so that I can paste it into an agent prompt.
 8. As a person, I want "Copy Relative Path" to put the path relative to the Panel root on the clipboard, so that I get the short path that matches the tree I see.
 9. As a person, I want a short "Copied path" notification after a copy, so that I know the copy worked.
-10. As a person, I want "Reveal in File Manager" to open the system file manager at the item's folder with the item selected, so that I can find it there.
-11. As a Linux person, I want Reveal to ask the file manager over D-Bus to select the item, and to fall back to opening the parent folder if that fails, so that it works with any file manager.
-12. As a macOS person, I want Reveal to show the item in Finder, so that the menu works there too.
-13. As a Windows person, I want Reveal to show the item in Explorer, so that the menu works there too.
+10-13. Removed: Reveal in File Manager was dropped after use. On folders it did almost the same as Open in Default App, which is the one the person needs.
 14. As a person, I want "Open in Default App" to open the item with the program my system uses for it, so that I can open a PDF or an image from the tree.
-15. As a person working in a space on another machine, I want Reveal and Open in Default App to be hidden, so that I do not get actions that cannot work on that machine.
+15. As a person working in a space on another machine, I want Open in Default App to be hidden, so that I do not get actions that cannot work on that machine.
 16. As a person, I want "Open in Terminal" to open a new tab in the current space with a shell in that folder (the parent folder for a file), so that I can run commands there at once.
 17. As a person, I want "New File…" on a folder to open the folder and show an empty name field at the top of its children, so that I type the name where the file will appear.
 18. As a person, I want "New Folder…" to work the same way and make a folder, so that both are one gesture.
@@ -92,11 +89,11 @@ The menu shows only the items that apply to the item (see Solution), so not ever
 ## Implementation Decisions
 
 - **The menu is `my-menu` with a new `file` kind.** `my-files` opens `my-menu` as a pointer popup (`frame: "none"`, as the space and tab menus do) with props `{ tab: "file", target: { path, dir, root, on, isRoot, open, platform } }`. `my-menu` builds the item list from the target. Each item's command is a mod command, `my-files.<action>`, which Herdr delivers to `my-files`'s `nextCommand()`. This reuses the existing menu look and keyboard handling, and needs no new state channel: `my-files` keeps the right-clicked target until the next right-click.
-- **`my-files` runs every action.** It listens on `nextCommand()` for `copy-path`, `copy-relative-path`, `reveal`, `open-default`, `open-terminal`, `new-file`, `new-folder`, `rename`, `duplicate`, `trash`, `trash-confirmed` and `collapse-all`, and acts on the kept target. Clipboard writes use `cx.write_to_clipboard`. Program runs use `exec(..., { on })`, so a remote space's changes run on its machine.
+- **`my-files` runs every action.** It listens on `nextCommand()` for `copy-path`, `copy-relative-path`, `open-default`, `open-terminal`, `new-file`, `new-folder`, `rename`, `duplicate`, `trash`, `trash-confirmed` and `collapse-all`, and acts on the kept target. Clipboard writes use `cx.write_to_clipboard`. Program runs use `exec(..., { on })`, so a remote space's changes run on its machine.
 - **Pure modules, no Herdr imports.** *Menu items* lives in `my-menu` (`mods/my-menu/menu-items.js`), its only user: a mod cannot import from another mod's folder (`herdr-app check` rejects it as "resolves outside the application directory"). *Names* and *commands* live beside `my-files`.
   - *menu items*: given the target, returns the ordered item list with group breaks. It applies the visibility rules: local-only items, folder-only items, root rules, write items hidden on Windows, Collapse All only for open folders.
   - *names*: the relative path from the Panel root; the next free duplicate name given a name and the folder's existing names; name validation (empty, `/`, `.`, `..`, taken) returning an error message or none.
-  - *commands*: for each action and platform, the program and arguments to run. Linux Reveal is `gdbus call --session --dest org.freedesktop.FileManager1 --object-path /org/freedesktop/FileManager1 --method org.freedesktop.FileManager1.ShowItems "['file://<path>']" ""`, falling back to `xdg-open <parent>`; macOS `open -R`; Windows `explorer /select,<path>`. Open in Default App reuses the Markdown viewer's opener rule (`xdg-open`, `open`, `rundll32 url.dll,FileProtocolHandler`). Trash is `gio trash` on Linux and a Finder `osascript` call on macOS. File changes go through `sh` with paths as positional arguments, never spliced into the script. New and Rename refuse to overwrite: they fail if the target exists, even if it appeared after validation.
+  - *commands*: for each action and platform, the program and arguments to run. Open in Default App reuses the Markdown viewer's opener rule (`xdg-open`, `open`, `rundll32 url.dll,FileProtocolHandler`). Trash is `gio trash` on Linux and a Finder `osascript` call on macOS. File changes go through `sh` with paths as positional arguments, never spliced into the script. New and Rename refuse to overwrite: they fail if the target exists, even if it appeared after validation.
 - **Inline name field.** One edit at a time, held by `my-files`: `{ kind: "new-file" | "new-folder" | "rename", folder, original? , error? }`. The field is a `gpui-base` `Input` in the tree row (rename) or a new row at the top of the folder's children (new). Enter validates, then runs the command; Esc or focus loss cancels. A new edit cancels any open one.
 - **Confirm dialog.** `my-confirm`, a clone of Herdr's `confirm` with `frame: "none"`, square corners and a 1px border, recorded in `docs/upstream-forks.md`. `my-files` opens it with `command: { name: "my-files.trash-confirmed" }`.
 - **Refresh.** After each successful change `my-files` reloads the affected folder at once instead of waiting for the folder watch or the 10-second timer. Remote spaces have no watch, so this is their only prompt refresh.

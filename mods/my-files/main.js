@@ -5,7 +5,7 @@ import { spaces, panes, focused, exec, run, readTextFile, watchFolder, theme, se
 import { fileKind, isMarkdown } from "./file-kind.js";
 import { viewerTabs, decide, sync, normalisePath } from "./viewer-tabs.js";
 import { relativePath, validateName, duplicateName, renameSelection, moveTreePath, parentOf, baseName } from "./names.js";
-import { revealCommand, openDefaultCommand, terminalFolder, newItemCommand, renameCommand, duplicateCommand, trashCommand } from "./commands.js";
+import { openDefaultCommand, terminalFolder, newItemCommand, renameCommand, duplicateCommand, trashCommand } from "./commands.js";
 
 function location() {
   const space = spaces().find(s => s.active), f = focused();
@@ -79,7 +79,6 @@ export default class Files extends View {
       notify({ title: "Copied path", level: "info" });
     } else if (name === "collapse-all") this.collapse(target.rel);
     else if (name === "open-terminal") run("tab.new", { space: target.space, folder: terminalFolder(target.path, target.dir) });
-    else if (name === "reveal") this.launch(revealCommand(target.platform, target.path), target.on, cx);
     else if (name === "new-file" || name === "new-folder") this.startEdit(name, target.rel, "", cx);
     else if (name === "rename") this.startEdit("rename", parentOf(target.rel), baseName(target.rel), cx, { original: baseName(target.rel), dir: target.dir });
     else if (name === "duplicate") this.duplicate(target, cx);
@@ -129,9 +128,8 @@ export default class Files extends View {
 
   launch(command, on, cx) {
     cx.spawn(async (cx) => {
-      let r = await exec(command.cmd, command.args, { on }).catch((e) => ({ code: 1, stderr: String(e?.message ?? e) }));
-      if (r.code !== 0 && command.fallback) r = await exec(command.fallback.cmd, command.fallback.args, { on }).catch((e) => ({ code: 1, stderr: String(e?.message ?? e) }));
-      if (r.code !== 0 && !command.ignoreCode) notify({ title: "Could not run " + command.cmd, body: (r.stderr || "").trim() || `exit ${r.code}`, level: "error" });
+      const r = await exec(command.cmd, command.args, { on }).catch((e) => ({ code: 1, stderr: String(e?.message ?? e) }));
+      if (r.code !== 0) notify({ title: "Could not run " + command.cmd, body: (r.stderr || "").trim() || `exit ${r.code}`, level: "error" });
     });
   }
 

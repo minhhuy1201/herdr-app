@@ -1,6 +1,5 @@
 // Programs behind the File menu's actions. No Herdr imports, so node --test runs them.
-// Each returns { cmd, args }; reveal may add `fallback` (run when cmd fails) and
-// `ignoreCode` (explorer exits 1 on success).
+// Each returns { cmd, args }.
 
 export function parentFolder(path) {
   const i = path.replace(/\/+$/, "").lastIndexOf("/");
@@ -15,19 +14,6 @@ export function openDefaultCommand(platform, path) {
   // Not `cmd /c start`: cmd would parse `&` in a path as a command separator.
   if (platform === "windows") return { cmd: "rundll32", args: ["url.dll,FileProtocolHandler", path] };
   return { cmd: "xdg-open", args: [path] };
-}
-
-// The URI sits inside a GVariant string in single quotes, so `'` is encoded too.
-const fileUri = (path) => "file://" + path.split("/").map((s) => encodeURIComponent(s).replace(/'/g, "%27")).join("/");
-
-export function revealCommand(platform, path) {
-  if (platform === "macos") return { cmd: "open", args: ["-R", path] };
-  if (platform === "windows") return { cmd: "explorer", args: [`/select,${path.replace(/\//g, "\\")}`], ignoreCode: true };
-  return {
-    cmd: "gdbus",
-    args: ["call", "--session", "--dest", "org.freedesktop.FileManager1", "--object-path", "/org/freedesktop/FileManager1", "--method", "org.freedesktop.FileManager1.ShowItems", `['${fileUri(path)}']`, ""],
-    fallback: { cmd: "xdg-open", args: [parentFolder(path)] },
-  };
 }
 
 // Makes a file or folder `name` inside `parent`. Paths are positional arguments so quotes and

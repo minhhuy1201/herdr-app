@@ -8,7 +8,7 @@ export function fileMenuItems(target) {
   const { dir, isRoot, open, on, platform } = target;
   const local = !on;
   const launch = [
-    ...(local ? [item("open", "Open in Default App", "open-default"), item("open", "Reveal in File Manager", "reveal")] : []),
+    ...(local ? [item("open", "Open in Default App", "open-default")] : []),
     item("open", "Open in Terminal", "open-terminal"),
   ];
   const make = dir && platform !== "windows" ? [item("new", "New File…", "new-file"), item("new", "New Folder…", "new-folder")] : [];
