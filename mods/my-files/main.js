@@ -1,9 +1,11 @@
 // A lazy file browser for the focused pane's folder, with bounded read-only previews.
 import { View, div, svg, image } from "gpui-kit";
-import { v_flex, h_flex, Editor, EditorState } from "gpui-base";
-import { spaces, panes, focused, exec, run, readTextFile, watchFolder, theme, settings, window, shared, setShared, machines } from "herdr";
+import { v_flex, h_flex, Editor, EditorState, InputState, Input } from "gpui-base";
+import { spaces, panes, focused, exec, run, readTextFile, watchFolder, theme, settings, window, shared, setShared, machines, openOverlay, notify, nextCommand } from "herdr";
 import { fileKind, isMarkdown } from "./file-kind.js";
 import { viewerTabs, decide, sync, normalisePath } from "./viewer-tabs.js";
+import { relativePath, validateName, duplicateName, renameSelection, moveTreePath, parentOf, baseName } from "./names.js";
+import { openDefaultCommand, newItemCommand, renameCommand, duplicateCommand, trashCommand, platformOf } from "./commands.js";
 
 function location() {
   const space = spaces().find(s => s.active), f = focused();
@@ -40,12 +42,181 @@ async function directory(path, on) {
   return out;
 }
 
+const INDENT = 16;
+
+// One column per ancestor folder, each with a vertical line under that folder's icon.
+function guides(depth, t) {
+  return h_flex().flex_none().h_full().children(Array.from({ length: depth }, (_, i) =>
+    div().w(INDENT).h_full().flex_none().child(div().ml(7).w(1).h_full().bg(t.border))));
+}
+
 export default class Files extends View {
   init(_props, cx) {
     this.saved = new Map();
+    this.platforms = new Map();
     this.entries = new Map(); this.folders = new Set(); this.pending = new Set(); this.marks = {};
     this.refresh(cx);
     cx.timer.every(10000, cx => this.refresh(cx));
+    cx.spawn(async cx => { for (;;) { this.command(await nextCommand(), cx); cx.notify(); } });
+  }
+
+  // The File menu acts on the item last right-clicked; mod commands carry no arguments.
+  openMenu(path, entry, cx) {
+    this.cancelEdit();
+    if (!this.root) return;
+    const isRoot = path === "";
+    const absolute = isRoot ? this.root : `${this.root}/${path}`;
+    const dir = isRoot || Boolean(entry?.dir);
+    this.menuTarget = { path: absolute, dir, root: this.root, on: this.on, isRoot, open: isRoot || this.folders.has(path), platform: this.platform(), rel: path, context: this.context };
+    const { rel, context, ...target } = this.menuTarget;
+    openOverlay({ mod: "my-menu", kind: "popup", frame: "none", width: 280, props: { tab: "file", target } });
+  }
+
+  command(name, cx) {
+    const target = this.menuTarget;
+    if (!target) return;
+    if (name === "copy-path" || name === "copy-relative-path") {
+      cx.write_to_clipboard(name === "copy-path" ? target.path : relativePath(target.root, target.path));
+      notify({ title: "Copied path", level: "info" });
+    } else if (name === "open-default") this.launch(openDefaultCommand(target.platform, target.path), target.on, cx);
+    else if (name === "trash") this.askTrash(target);
+    else if (name === "trash-confirmed") this.trash(cx);
+    // The rest act on the tree shown when the menu opened.
+    else if (!this.current(target.context)) return;
+    else if (name === "collapse-all") this.collapse(target.rel);
+    else if (name === "new-file" || name === "new-folder") this.startEdit(name, target.rel, "", cx);
+    else if (name === "rename") this.startEdit("rename", parentOf(target.rel), baseName(target.rel), cx, { original: baseName(target.rel), dir: target.dir });
+    else if (name === "duplicate") this.duplicate(target, cx);
+  }
+
+  // The dialog names the item; the confirmation acts on this copy, not on a later right-click's target.
+  askTrash(target) {
+    if (target.isRoot || !trashCommand(target.platform, target.path)) return;
+    this.trashTarget = target;
+    openOverlay({ mod: "my-confirm", kind: "dialog", width: 380, height: 160, frame: "none", props: { title: `Move "${baseName(target.rel)}" to Trash?`, detail: "You can restore it from the system trash.", confirm: "Move to Trash", command: { name: "my-files.trash-confirmed" } } });
+  }
+
+  trash(cx) {
+    const target = this.trashTarget;
+    this.trashTarget = null;
+    if (!target) return;
+    this.runChange(trashCommand(target.platform, target.path), target.context, parentOf(target.rel), "Could not move " + baseName(target.rel) + " to Trash", () => {
+      this.collapse(target.rel);
+      if (this.file && (this.file === target.rel || this.file.startsWith(target.rel + "/"))) this.show(null);
+    }, cx);
+  }
+
+  duplicate(target, cx) {
+    const folder = parentOf(target.rel), original = baseName(target.rel);
+    const name = duplicateName(original, target.dir, (this.entries.get(folder) ?? []).map((e) => e.name));
+    this.runChange(duplicateCommand(parentOf(target.path), original, name), target.context, folder, "Could not duplicate " + original, null, cx);
+  }
+
+  launch(command, on, cx) {
+    cx.spawn(async () => { await this.runOrNotify(command, on, "Could not run " + command.cmd); });
+  }
+
+  async runOrNotify(command, on, failTitle) {
+    const r = await exec(command.cmd, command.args, { on }).catch((e) => ({ code: 1, stderr: String(e?.message ?? e) }));
+    if (r.code !== 0) notify({ title: failTitle, body: (r.stderr || "").trim() || `exit ${r.code}`, level: "error" });
+    return r.code === 0;
+  }
+
+  // Runs a change on the machine of `context`, then reloads `folder` if the panel still shows that context.
+  runChange(command, context, folder, failTitle, onDone, cx) {
+    cx.spawn(async (cx) => {
+      const ok = await this.runOrNotify(command, context.on, failTitle);
+      if (ok && onDone && this.current(context)) onDone();
+      try { if (this.current(context)) await this.loadFolder(folder, context); } catch (e) { if (this.current(context)) this.error = String(e); }
+      cx.notify();
+    });
+  }
+
+  // The OS of the panel's machine; null while a remote machine's OS is still being asked.
+  platform() {
+    return this.on ? this.platforms.get(this.on) ?? null : window()?.platform;
+  }
+
+  askPlatform(on, cx) {
+    if (!on || this.platforms.has(on)) return;
+    this.platforms.set(on, null);
+    cx.spawn(async (cx) => {
+      const r = await exec("uname", ["-s"], { on }).catch((e) => ({ error: String(e?.message ?? e) }));
+      const platform = platformOf(r);
+      if (platform === undefined) this.platforms.delete(on);
+      else this.platforms.set(on, platform);
+      cx.notify();
+    });
+  }
+
+  // One inline name field at a time: { kind, folder, input, error, armed }. `folder` is the
+  // tree path of the folder whose children show the field ("" is the Panel root).
+  // A rename edit also holds `original` (the current name) and `dir`; its field replaces that row.
+  startEdit(kind, folder, value, cx, rename = {}) {
+    this.cancelEdit();
+    if (folder !== "" && !this.folders.has(folder)) this.toggle(folder, cx);
+    const input = InputState.new({ value });
+    const edit = { kind, folder, input, error: null, armed: false, context: this.context, ...rename };
+    const select = () => { if (kind === "rename") input.set_selected_range(renameSelection(value, Boolean(rename.dir))); };
+    input.on("submit", (_e, cx) => this.submitEdit(edit, cx));
+    // The menu popup closing takes focus back, so blur only cancels once the field has been focused again.
+    input.on("blur", (_e, cx) => { if (edit.armed && this.edit === edit) { this.cancelEdit(); cx.notify(); } });
+    input.on("change", (_e, cx) => { if (edit.error) { edit.error = null; cx.notify(); } });
+    this.edit = edit;
+    input.focus();
+    select();
+    cx.timer.after(600, (cx) => { if (this.edit !== edit) return; input.focus(); select(); edit.armed = true; cx.notify(); });
+  }
+
+  cancelEdit() {
+    this.edit?.input.release();
+    this.edit = null;
+  }
+
+  submitEdit(edit, cx) {
+    if (this.edit !== edit) return;
+    const name = edit.input.value().trim();
+    const renaming = edit.kind === "rename";
+    if (renaming && name === edit.original) { this.cancelEdit(); cx.notify(); return; }
+    const error = validateName(name, (this.entries.get(edit.folder) ?? []).map((e) => e.name));
+    if (error) { edit.error = error; cx.notify(); return; }
+    const { context, folder, original } = edit;
+    const parent = folder ? `${context.cwd}/${folder}` : context.cwd;
+    this.cancelEdit();
+    cx.notify();
+    if (renaming) {
+      this.runChange(renameCommand(parent, original, name), context, folder, "Could not rename " + original,
+        () => this.moveState(folder ? `${folder}/${original}` : original, folder ? `${folder}/${name}` : name), cx);
+      return;
+    }
+    this.runChange(newItemCommand(edit.kind === "new-folder" ? "folder" : "file", parent, name), context, folder, "Could not create " + name, null, cx);
+  }
+
+  moveState(from, to) {
+    const move = (p) => moveTreePath(p, from, to);
+    this.folders = new Set([...this.folders].map(move));
+    this.entries = new Map([...this.entries].map(([p, e]) => [move(p), e]));
+    this.pending = new Set([...this.pending].map(move));
+    if (this.file) this.file = move(this.file);
+  }
+
+  editRow(depth, t) {
+    const edit = this.edit;
+    return v_flex().id("files-edit").flex_none()
+      .on_key_down((e, cx) => { if (e.key === "escape") { this.cancelEdit(); cx.stop_propagation(); cx.notify(); } })
+      .child(h_flex().h(28).pl(8).pr(8).items_center()
+        .child(guides(depth, t))
+        .child((edit.kind === "new-folder" || edit.dir ? image("mods/my-files/icons/material/folder.svg") : image("mods/my-files/icons/material/file.svg")).size(16).flex_none().mr(7))
+        .child(Input.new(edit.input).flex_1().min_w(0).h(24).px(6).border_1().border_color(edit.error ? t.ansi1 : t.accent).bg(t.background).text_size(13).text_color(t.foreground)))
+      .when(Boolean(edit.error), el => el.child(div().pl(8 + depth * INDENT + 23).pb(2).text_size(11).text_color(t.ansi1).child(edit.error)));
+  }
+
+  // Closes a folder and every folder inside it; "" is the Panel root.
+  collapse(path) {
+    for (const folder of [...this.folders]) if (path === "" || folder === path || folder.startsWith(path + "/")) {
+      this.folders.delete(folder);
+      this.entries.delete(folder);
+    }
   }
 
   watch(root, cx) {
@@ -76,11 +247,13 @@ export default class Files extends View {
     if (next !== this.context?.key) {
       if (this.context) this.saved.set(this.context.key, { folders: this.folders, file: this.file });
       const saved = this.saved.get(next);
+      this.cancelEdit();
       this.context = { key: next, cwd, on }; this.root = cwd; this.on = on; this.entries = new Map(); this.folders = new Set(saved?.folders);
       this.pending = new Set(); this.marks = {}; this.show(null); this.watched = null; this.error = null; this.limited = false;
       this.loading = false;
       if (saved?.file) this.show(saved.file, cx);
     }
+    this.askPlatform(on, cx);
     if (!cwd || this.loading) return;
     const context = this.context;
     this.loading = true;
@@ -168,16 +341,23 @@ export default class Files extends View {
 
   rows(prefix, depth, out, t) {
     if (out.length >= TOTAL || depth > 40) return out;
+    if (this.edit && this.edit.folder === prefix && this.edit.kind !== "rename") out.push(this.editRow(depth, t));
     for (const entry of this.entries.get(prefix) ?? []) {
       if (out.length >= TOTAL) break;
       const path = prefix ? `${prefix}/${entry.name}` : entry.name, open = this.folders.has(path), mark = this.marks[`${this.root}/${path}`];
       const kind = fileKind(entry.name, entry.dir, open);
-      out.push(h_flex().id(`file-${path}`).h(28).flex_none().pl(8 + depth * 18).pr(8).gap(7).items_center().cursor_pointer().hover(s => s.bg(t.hover))
-        .on_click((_e, cx) => entry.dir ? this.toggle(path, cx) : isMarkdown(entry.name) ? this.openMarkdown(path) : this.show(path, cx))
-        .child(entry.dir ? svg(`mods/my-files/icons/chevron-${open ? "down" : "right"}.svg`).size(12).flex_none().text_color(t.dim) : div().w(12).flex_none())
-        .child(image(`mods/my-files/icons/material/${kind}.svg`).size(16).flex_none())
+      if (this.edit?.kind === "rename" && this.edit.folder === prefix && this.edit.original === entry.name) {
+        out.push(this.editRow(depth, t));
+        if (entry.dir && open) this.rows(path, depth + 1, out, t);
+        continue;
+      }
+      out.push(h_flex().id(`file-${path}`).h(28).flex_none().pl(8).pr(8).items_center().cursor_pointer().hover(s => s.bg(t.hover))
+        .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); this.openMenu(path, entry, cx); })
+        .on_click((_e, cx) => { this.cancelEdit(); entry.dir ? this.toggle(path, cx) : isMarkdown(entry.name) ? this.openMarkdown(path) : this.show(path, cx); })
+        .child(guides(depth, t))
+        .child(image(`mods/my-files/icons/material/${kind}.svg`).size(16).flex_none().mr(7))
         .child(div().flex_1().min_w(0).truncate().child(entry.name))
-        .when(Boolean(mark), el => el.child(div().flex_none().text_size(11).text_color(mark === "A" ? t.ansi2 : mark === "D" ? t.ansi1 : t.ansi3).child(mark))));
+        .when(Boolean(mark), el => el.child(div().flex_none().ml(7).text_size(11).text_color(mark === "A" ? t.ansi2 : mark === "D" ? t.ansi1 : t.ansi3).child(mark))));
       if (entry.dir && open) this.rows(path, depth + 1, out, t);
     }
     return out;
@@ -187,12 +367,13 @@ export default class Files extends View {
     if (key() !== this.context?.key) this.refresh(cx);
     this.syncTabs();
     const t = theme();
+    const rootMenu = (_e, cx) => { cx.stop_propagation(); this.openMenu("", null, cx); };
     return v_flex().id("files").size_full().min_h(0).overflow_hidden().bg(t.chrome).text_color(t.foreground).text_size(13)
-      .child(h_flex().h(42).flex_none().px(14).gap(8).items_center()
+      .child(h_flex().id("files-title").h(42).flex_none().px(14).gap(8).items_center().on_mouse_down("right", rootMenu)
         .when(Boolean(this.file), el => el.child(div().id("files-back").w(20).cursor_pointer().text_color(t.muted).on_click((_e, cx) => { this.show(null); cx.notify(); }).child("←")))
         .child(div().font_semibold().truncate().child(this.root?.split(/[\\/]/).pop() || "Files"))
         .child(div().flex_1().min_w(0).truncate().text_right().text_size(12).text_color(t.dim).child(this.file ?? "")))
-      .when(!this.file, el => el.child(v_flex().id("files-tree").flex_1().min_h(0).overflow_y_scrollbar().p(6).children(this.rows("", 0, [], t))
+      .when(!this.file, el => el.child(v_flex().id("files-tree").flex_1().min_h(0).overflow_y_scrollbar().p(6).on_mouse_down("right", rootMenu).children(this.rows("", 0, [], t))
         .when(Boolean(this.error) || !this.entries.get("")?.length, el => el.child(div().p(8).text_size(12).text_color(t.dim).child(this.error || (this.loading ? "Loading files…" : this.root ? "No files" : "No folder"))))
         .when(this.limited, el => el.child(div().p(8).text_size(11).text_color(t.dim).child("File list limited to 500 entries per folder and 5,000 total")))))
       .when(Boolean(this.file), el => el.child(this.code ? Editor.new(this.code).flex_1().min_h(0) : div().p(12).text_color(t.dim).child(this.fileError || "Loading file…")));

@@ -26,6 +26,7 @@
 !/mods/my-palette/
 !/mods/my-picker/
 !/mods/my-status/
+!/mods/my-confirm/
 gpui-kit.d.ts
 herdr.d.ts
 jsconfig.json

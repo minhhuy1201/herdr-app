@@ -39,3 +39,11 @@ _Avoid_: rendered view, reader mode
 **Source mode**:
 The Markdown viewer showing the file's raw text with line numbers and markdown syntax colours.
 _Avoid_: raw view, code view, edit mode
+
+**Panel root**:
+The folder the Files panel shows at the top of its tree: the focused pane's current folder. Relative paths count from it.
+_Avoid_: project root, repo root, worktree
+
+**File menu**:
+The menu that opens on a right-click on a file or folder in the Files panel, or on its empty space for the Panel root. It acts on that one item.
+_Avoid_: context menu, right-click menu (both also name the terminal's menu)

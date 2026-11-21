@@ -1,10 +1,11 @@
 // Context menus (Herdr's items). Opened as a popup with
-// props { tab: "pane" | "tab" | "space" | "global", target }.
+// props { tab: "pane" | "tab" | "space" | "file" | "global", target }.
 // ↑/↓ move, Enter runs, Esc closes. An item is [label, command, args];
 // a command "worktree" opens the worktree dialog instead.
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
+import { fileMenuItems } from "./menu-items.js";
 import { run, props, closeOverlay, openOverlay, theme, keys, terminals, spaces, panes, exec } from "herdr";
 
 // Where a space is now: its first terminal's live folder, else where it was made.
@@ -47,6 +48,8 @@ function items(p, git) {
         ["Close pane", "pane.close", { pane: tg.pane }],
       ];
     }
+    case "file":
+      return fileMenuItems(tg).map((i) => [i.label, i.command, {}, i.group]);
     case "tab":
       return [
         ["Rename", "tab.rename", { id: tg.id }],
@@ -72,7 +75,10 @@ function items(p, git) {
   }
 }
 
+const FILE_ICONS = { "my-files.trash": "x", "my-files.collapse-all": "minus", "my-files.new-file": "plus", "my-files.new-folder": "folder-plus" };
+
 function menuIcon(command) {
+  if (command.startsWith("my-files.")) return `mods/workspace-chrome/${FILE_ICONS[command] ?? "file-text"}.svg`;
   const name = command.endsWith(".close") ? "x" : command.endsWith(".rename") ? "square-pen" : command.endsWith(".new") ? "plus" : command === "worktree" ? "git-branch" : command === "app.help" ? "terminal" : command === "app.theme" ? "settings" : command === "pane.split" ? "panel-right" : command === "pane.zoom" ? "square" : "terminal";
   return `mods/workspace-chrome/${name}.svg`;
 }
@@ -133,7 +139,7 @@ export default class Menu extends View {
       .children(
         list.map((it, i) =>
           v_flex()
-            .when(i > 0 && (it[1].endsWith(".close") || it[1] === "app.help" || (it[1] === "app.theme" && list[i - 1][1] !== "app.theme")), el => el.child(div().my(4).h(1).bg(t.border)))
+            .when(i > 0 && (it[1].endsWith(".close") || it[1] === "app.help" || (it[3] !== undefined && it[3] !== list[i - 1][3]) || (it[1] === "app.theme" && list[i - 1][1] !== "app.theme")), el => el.child(div().my(4).h(1).bg(t.border)))
             .child(h_flex()
             .id(`mi-${i}`)
             .min_h(31)
@@ -147,6 +153,7 @@ export default class Menu extends View {
             .justify_between()
             .text_color(t.foreground)
             .when(i === this.at, (el) => el.bg(t.selected))
+            .cursor_pointer()
             .hover((s) => s.bg(t.hover))
             .on_click((_e, cx) => this.choose(i, cx))
             .child(svg(menuIcon(it[1])).size(14).flex_none().text_color(t.muted))
