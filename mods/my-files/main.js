@@ -113,10 +113,10 @@ export default class Files extends View {
   }
 
   launch(command, on, cx) {
-    cx.spawn(async () => { await this.exec(command, on, "Could not run " + command.cmd); });
+    cx.spawn(async () => { await this.runOrNotify(command, on, "Could not run " + command.cmd); });
   }
 
-  async exec(command, on, failTitle) {
+  async runOrNotify(command, on, failTitle) {
     const r = await exec(command.cmd, command.args, { on }).catch((e) => ({ code: 1, stderr: String(e?.message ?? e) }));
     if (r.code !== 0) notify({ title: failTitle, body: (r.stderr || "").trim() || `exit ${r.code}`, level: "error" });
     return r.code === 0;
@@ -125,7 +125,7 @@ export default class Files extends View {
   // Runs a change on the machine of `context`, then reloads `folder` if the panel still shows that context.
   runChange(command, context, folder, failTitle, onDone, cx) {
     cx.spawn(async (cx) => {
-      const ok = await this.exec(command, context.on, failTitle);
+      const ok = await this.runOrNotify(command, context.on, failTitle);
       if (ok && onDone && this.current(context)) onDone();
       try { if (this.current(context)) await this.loadFolder(folder, context); } catch (e) { if (this.current(context)) this.error = String(e); }
       cx.notify();
@@ -141,8 +141,10 @@ export default class Files extends View {
     if (!on || this.platforms.has(on)) return;
     this.platforms.set(on, null);
     cx.spawn(async (cx) => {
-      const r = await exec("uname", ["-s"], { on }).catch(() => null);
-      this.platforms.set(on, platformOf(r));
+      const r = await exec("uname", ["-s"], { on }).catch((e) => ({ error: String(e?.message ?? e) }));
+      const platform = platformOf(r);
+      if (platform === undefined) this.platforms.delete(on);
+      else this.platforms.set(on, platform);
       cx.notify();
     });
   }

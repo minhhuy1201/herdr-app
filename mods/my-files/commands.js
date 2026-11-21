@@ -31,16 +31,19 @@ export function duplicateCommand(parent, from, to) {
   return { cmd: "sh", args: ["-c", script, "files", parent, from, to] };
 }
 
-// Moves `path` to the system trash; null where there is none (Windows hides the item).
-// A leading dash is safe: gio takes the path after `--`, osascript takes it as an argument.
-// The OS of a remote machine from `uname -s`; uname failing to start means Windows.
-// Another Unix gives null, so the menu hides the items that need a known OS.
+// The OS of a remote machine from `uname -s`, or `{ error }` when exec rejected.
+// uname not found means Windows (the same signal directory() uses for sh). Another Unix
+// gives null, so the menu hides the items that need a known OS. Any other rejection
+// (unreachable, timeout) gives undefined: unknown for now, ask again later.
 export function platformOf(r) {
-  if (!r || r.code !== 0) return "windows";
+  if (r.error !== undefined) return /program not found/.test(r.error) ? "windows" : undefined;
+  if (r.code !== 0) return null;
   const os = r.stdout.trim();
   return os === "Linux" ? "linux" : os === "Darwin" ? "macos" : null;
 }
 
+// Moves `path` to the system trash; null where there is none (Windows hides the item).
+// A leading dash is safe: gio takes the path after `--`, osascript takes it as an argument.
 export function trashCommand(platform, path) {
   if (platform === "macos") return { cmd: "osascript", args: ["-e", "on run argv", "-e", 'tell application "Finder" to delete (POSIX file (item 1 of argv) as alias)', "-e", "end run", path] };
   if (platform === "windows") return null;

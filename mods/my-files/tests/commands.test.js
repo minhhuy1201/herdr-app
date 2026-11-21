@@ -132,10 +132,12 @@ test("windows has no trash command", () => {
 });
 
 import { platformOf } from "../commands.js";
-test("platformOf maps uname output and treats a failed uname as Windows", () => {
+test("platformOf maps uname output; uname missing means Windows, an unreachable machine stays unknown", () => {
   assert.equal(platformOf({ code: 0, stdout: "Linux\n" }), "linux");
   assert.equal(platformOf({ code: 0, stdout: "Darwin\n" }), "macos");
-  assert.equal(platformOf({ code: 1, stdout: "" }), "windows");
-  assert.equal(platformOf(null), "windows");
   assert.equal(platformOf({ code: 0, stdout: "FreeBSD\n" }), null);
+  assert.equal(platformOf({ code: 1, stdout: "" }), null);
+  assert.equal(platformOf({ error: "cannot start uname: program not found" }), "windows");
+  assert.equal(platformOf({ error: "machine vps is unreachable" }), undefined);
+  assert.equal(platformOf({ error: "timed out after 30000 ms" }), undefined);
 });
